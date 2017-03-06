@@ -1,0 +1,41 @@
+doctype html
+html(ng-app='terminKalender')
+  head
+    meta(name="viewport", content="width=device-width, initial-scale=1")
+    title=title
+
+    link(href="/lib/bootstrap/dist/css/bootstrap.min.css",rel="stylesheet", type="text/css")
+    link(href="./stylesheets/style.css",rel="stylesheet")
+
+  body
+    div
+      nav.navbar.navbar-inverse
+        div.container-fluid
+          div.navbar-header
+            a.navbar-brand(href="") TerminKalender
+              span
+                img(alt="Brand" src="./images/kalender.png")
+              ul.nav.navbar-nav.navbar-right(ng-controller='logout')
+                li
+                  a(ng-show="userLogged",href="", ng-click='logout()') Logout
+
+
+    div.container
+      div(ng-view)
+
+
+    script(src="/lib/jquery/dist/jquery.min.js", type="text/javascript")
+    script(src="/lib/bootstrap/dist/js/bootstrap.min.js",type="text/javascript")
+
+
+    script(src="/lib/angular/angular.min.js", type="text/javascript")
+    script(src="/lib/angular-route/angular-route.min.js", type="text/javascript")
+    script(src="/lib/ngstorage/ngStorage.min.js", type="text/javascript")
+
+    script(src="/javascripts/ang/tkMain.js",type="text/javascript")
+    script(src="/javascripts/ang/mainCode.min.js",type="text/javascript")
+    //Dev Deps
+    //script(src="/javascripts/ang/dev/tkRoutes.js",type="text/javascript")
+    //script(src="/javascripts/ang/dev/tkCtrl.js",type="text/javascript")
+    //script(src="/javascripts/ang/dev/tkService.js",type="text/javascript")
+    //script(src="/javascripts/ang/dev/tkDirective.js", type='text/javascript')*/

@@ -1,0 +1,120 @@
+<!-- tkGroup.html -->
+<div class="page-header custom_header">
+    <h1> {{pers[0].Gruppen_Name}}</h1>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+        <div>
+            <kalendergrp termine="term"></kalendergrp>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="panel-group" id="accordion">
+            <div class="panel panel-primary">
+                <div class="panel-heading customPanel" >
+                    <h2 class="panel-title" data-toggle="collapse" data-parent="#accordion" data-target="#collapse1">
+                        Termine <span class="glyphicon glyphicon-arrow-down pull-right"></span>
+                    </h2>
+                </div>
+                <div id="collapse1" class="panel-collapse collapse">
+                    <ul class="list-group">
+                        <li class="list-group-item" ng-repeat="termine in term">
+                            <h4>{{termine.Gruppen_Termine_Titel}}  {{termine.Gruppen_Termine_Start | date : 'dd-MM-yyyy HH:mm'}} bis {{termine.Gruppen_Termine_Ende | date : 'dd-MM-yyyy HH:mm'}}
+                                <a   href="" ng-click="deleteGrpTermin(termine.Gruppen_Termine_Id)"><span class="glyphicon glyphicon-remove pull-right" ></span></a>
+                            </h4>
+                            <p>{{termine.Gruppen_Termine_Text}}</p>
+                        </li>
+                    </ul>
+                    <div>
+                        <button class="btn btn-block btn-default" ng-click="switchGruppenTermine()">
+                            neunen Termin anlegen!
+                        </button>
+                    </div>
+                    <div class="form-group" ng-show="gruppenTermine">
+                        <form novalidate ng-submit="createGruppenTermin()">
+
+
+                            Start:<input required type="text" class="form-control datepicker" placeholder="Start yyyy-mm-dd hh:mm:ss" ng-model="newterm.start">
+                            Ende:<input required type="text" class="form-control datepicker" placeholder="Ende yyyy-mm-dd hh:mm:ss" ng-model="newterm.ende">
+                            Titel:<input required class="form-control" type="text" placeholder="Titel" ng-model="newterm.titel"><br>
+                            Text:<textarea ng-model="newterm.text" class="form-control" rows="5" placeholder="Berschreibung deines Termines" maxlength="40">
+                        </textarea>
+                            <button class="btn btn-block btn-warning" type="submit">Termin erstellen!</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row" ng-show="rech[0].read_grp">
+    <div class="col-lg-12">
+        <div class="panel-group" id="accordion4">
+            <div class="panel panel-primary">
+                <div class="panel-heading customPanel" >
+                    <h2 class="panel-title" data-toggle="collapse" data-parent="#accordion4" data-target="#collapse4">
+                        User Verwaltung <span class="glyphicon glyphicon-arrow-down pull-right"></span>
+                    </h2>
+                </div>
+                <div id="collapse4" class="panel-collapse collapse">
+                    <ul class="list-group" ng-repeat="user in memb">
+                        <li class="list-group-item">
+                            <div>
+                                <h4>{{user.User_Name}}
+                                <span class="pull-right">
+                                    <a  ng-show="rech[0].remove_user" href="" ng-click="removeUser(user.user_id)"><span class="glyphicon glyphicon-remove pull-right" ></span></a></span>
+                                </h4>
+                                <div class="form-inline" ng-show="rech[0].grant_rights">
+                                    <div class="checkbox">
+                                        <label>Read</label>
+                                        <input class="form-control" type="checkbox" ng-true-value="true" ng-false-value="false" ng-model="user.read_grp" ng-change="updateGroupRights(user)">
+
+                                    </div>
+                                    <div class="checkbox checkbmargin">
+                                        <label>Invite</label>
+                                        <input class="form-control"  type="checkbox" ng-true-value="true" ng-false-value="false" ng-model="user.invite_user" ng-change="updateGroupRights(user)">
+
+                                    </div>
+                                    <div class="checkbox checkbmargin">
+                                        <label>Remove</label>
+                                        <input class="form-control"  type="checkbox" ng-true-value="true" ng-false-value="false" ng-model="user.remove_user" ng-change="updateGroupRights(user)">
+
+                                    </div>
+                                    <div class="checkbox checkbmargin">
+                                        <label>GiveRights</label>
+                                        <input class="form-control"  type="checkbox" ng-true-value="true" ng-false-value="false" ng-model="user.grant_rights" ng-change="updateGroupRights(user)">
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                    <div ng-show="rech[0].invite_user">
+                        <div>
+                            <button class="btn btn-block btn-default" ng-click="switchUserCreate()">
+                                User einladen!
+                            </button>
+                        </div>
+                        <div ng-show="switchUser">
+                            <form novalidate ng-submit="inviteUser()" class="form-inline">
+                                Name:<input required type="text" class="form-control" placeholder="name" ng-model="invuser.name">
+                                <button class="btn btn-block btn-warning" type="submit">User aufnehmen!</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row" ng-init="successvis = true">
+    <div class="col-lg-12" ng-hide="successvis">
+        <a class="btn btn-block btn-danger">{{errormessage}}</a>
+    </div>
+    <div class="col-lg-12" ng-show="successvis">
+        <a class="btn btn-block btn-success">{{successmessage}}</a>
+    </div>
+</div>

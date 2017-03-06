@@ -1,0 +1,27 @@
+<!-- kalender.html -->
+<div class="jumbotron jumbostyle custom_header">
+
+    <h3 class="currentdate">
+        <a href="" ng-click="prev()">
+            <span class="glyphicon glyphicon-arrow-left cal_arrow"></span>
+        </a>
+        {{calendar_month_year}}
+        <a href="" ng-click="next()">
+            <span class="glyphicon glyphicon-arrow-right cal_arrow"></span>
+        </a>
+    </h3>
+
+</div>
+        <div>
+            <table class="table tablestyles">
+                <th>
+                    <td class="tableheader" ng-repeat="head in header track by $index">{{head}}</td>
+                </th>
+                <tr ng-repeat="row in matchdays track by $index">
+                    <td></td>
+                    <td class="tablecontent" ng-class="day.term && 'showBlue'|| 'showWhite'" ng-repeat="day in row track by $index">
+                        <a href="" data-toggle="collapse" data-parent="#accordion" data-target="#collapse1"><span class="numberSize">{{day.day}}</span></a>
+                    </td>
+                </tr>
+            </table>
+        </div>

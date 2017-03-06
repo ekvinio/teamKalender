@@ -1,0 +1,2680 @@
+var terminKalender = angular.module('terminKalender',['ngRoute','ngStorage']);
+
+/**
+ * Created by dev-kevinvanrijmenant on 8/24/15.
+ */
+terminKalender.controller('logout',function($scope,$rootScope,$sessionStorage,$location){
+    $scope.userLogged = false;
+    $scope.$on('isLogged',function(){
+        $scope.userLogged = true;
+    });
+    $scope.$on('isntLogged',function(){
+        $scope.userLogged = false;
+    });
+    $scope.logout = function(){
+        $sessionStorage.$reset();
+        $location.path('/login');
+        $rootScope.$broadcast('isntLogged',null);
+    };
+});
+terminKalender.controller('userCtrl',function($scope,$rootScope,$location,$routeParams,$sessionStorage,userService){
+    $scope.userTermine = false;
+    $scope.userMessages = false;
+    $scope.userLogged = $rootScope.userLogged;
+
+
+    userService.getUser($routeParams.id).success(function(res) {
+        var data = res.data;
+        $scope.successmessage = ''+res.data.pers[0].User_Name;
+        $scope.successvis = true;
+        if(res.acc == true){
+
+            $scope.pers = data.pers || null;
+            $scope.mess = data.mess || null;
+            $scope.term = data.term || null;
+            $scope.grpp = data.grpp || null;
+            $scope.rech = data.rech || null;
+            if(data.list != null){
+                $scope.list = parseRightsUser(data.list);
+            }
+
+
+            $scope.acc = true;
+
+            $rootScope.$broadcast('isLogged',null);
+        }else{
+
+            $scope.pers = res.data.pers;
+            $scope.term = res.data.term;
+            $scope.acc = false;
+        }
+
+    });
+
+    $scope.switchUserTermine = function(){
+        if($scope.userTermine){
+            $scope.userTermine = false;
+        }
+        else{
+            $scope.userTermine = true;
+        }
+    };
+    $scope.switchUserMessages = function(){
+        if($scope.userMessages){
+            $scope.userMessages = false;
+        }else{
+            $scope.userMessages = true;
+        }
+    };
+    $scope.switchUserCreate = function(){
+        if($scope.switchUser){
+            $scope.switchUser = false;
+        }
+        else{
+            $scope.switchUser = true;
+        }
+    };
+    $scope.switchGrpCreate = function(){
+        if($scope.switchGrp){
+            $scope.switchGrp = false;
+        }else{
+            $scope.switchGrp = true;
+        }
+    };
+
+
+    $scope.updateUserRights = function(data){
+        userService.updateUserRights(data).success(function(res){
+            if(res.type == true){
+                $scope.successvis = true;
+                $scope.successmessage = "Rechte updaten funktioniert";
+                userService.getUser($routeParams.id).success(function(res){
+                    if(data.list != null){
+                        $scope.list = parseRightsUser(res.data.list);
+                    }
+
+                })
+            }
+            else{
+                $scope.errormessage = "Rechte updaten nicht funktioniert";
+                $scope.successvis = false;
+            }
+        })
+    };
+
+
+
+    $scope.sendMess = function(){
+        alert($scope.newmess.empfaengerid);
+        if($scope.newmess.empfaengerid != null) {
+            $scope.newmess.absenderid = $scope.pers[0].User_Id;
+
+            if ($scope.list.length != null) {
+                for (var i = 0; i < $scope.list.length; i++) {
+                    if ($scope.list[i].User_Name.indexOf($scope.newmess.empfaengerid) != -1) {
+                        $scope.newmess.empfaengerid = $scope.list[i].User_Id;
+                    }
+                }
+            }
+        }
+
+
+        if($scope.newmess.empfaengerid != null) {
+            userService.sendMess($scope.newmess).success(function (res) {
+                if (res.type == true) {
+                    $scope.userMessages = false;
+                    $scope.successmessage = "Nachricht senden hat Funtioniert!";
+                    $scope.successvis = true;
+                } else {
+                    $scope.errormessage = "Nachricht senden hat nicht Funtioniert!";
+                    $scope.successvis = false;
+                }
+            });
+        }
+    };
+
+    $scope.deleteMess = function(id){
+        userService.deleteMess(id).success(function(res){
+            if(res.type == true){
+                userService.getUser($routeParams.id).success(function(res){
+                    $scope.mess = res.data.mess;
+                    $scope.successmessage = "Nachricht löschen hat Funtioniert!";
+                    $scope.successvis = true;
+                });
+            }else{
+                $scope.errormessage = "Nachricht löschen hat nicht Funtioniert!";
+                $scope.successvis = false;
+            }
+        });
+    };
+
+
+
+    $scope.createTermin = function(){
+        var truedate = true;
+        var arrstart = [],arrende = [];
+        var strstart,strende;
+
+        if($scope.newterm.start != null && $scope.newterm.ende != null){
+                arrstart = $scope.newterm.start.split(" ");
+                arrende = $scope.newterm.ende.split(" ");
+                strstart = arrstart[0]+"T"+arrstart[1];
+                strende = arrende[0]+"T"+arrende[1];
+
+            if(strstart.match("/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/") == false ||
+                strende.match("/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/") == false){
+                $scope.errormessage = "Termin falsches Format!";
+                $scope.successvis = false;
+                truedate = false;
+            }
+            if(new Date() > new Date(strstart) || new Date() > new Date(strende)){
+                $scope.errormessage = "Termin liegt in der Vergangenheit!";
+                $scope.successvis = false;
+                truedate = false;
+            }
+            else if(new Date(strstart) > new Date(strende)){
+                $scope.errormessage = "Termin Ende ist aelter als der Start!";
+                $scope.successvis = false;
+                truedate = false
+            }
+        }
+        else{
+            $scope.errormessage = "Termin erstellen hat nicht Funtioniert!";
+            $scope.successvis = false;
+            truedate = false;
+        }
+
+
+
+
+        if(truedate){
+                $scope.newterm.userid = $scope.pers[0].User_Id;
+                userService.newTerm($scope.newterm).success(function(res){
+                    if(res.type == true){
+                        userService.getUser($routeParams.id).success(function(res){
+                            $scope.term = res.data.term;
+                            $scope.userTermine = false;
+                            $scope.successmessage = "Termin erstellen hat Funtioniert!";
+                            $scope.successvis = true;
+                        });
+                    }else{
+                        $scope.errormessage = "Termin erstellen hat nicht Funtioniert!";
+                        $scope.successvis = false;
+                    }
+
+                })
+        }
+
+
+    };
+
+    $scope.deleteTermin = function(id){
+        userService.deleteTerm(id).success(function(res){
+            if(res.type == true){
+                userService.getUser($routeParams.id).success(function(res){
+                    $scope.term = res.data.term;
+                    $scope.successmessage ="Termin löschen hat Funtioniert!";
+                    $scope.successvis = true;
+                });
+            }else{
+                $scope.errormessage = "Termin löschen hat nicht Funtioniert!";
+                $scope.successvis = false;
+            }
+        });
+    };
+
+    $scope.createUser = function(){
+        if($scope.newuser != null){
+            userService.newUser($scope.newuser).success(function(res){
+                if(res.type == true){
+                    userService.getUser($routeParams.id).success(function(res){
+                        if(res.data.list != null){
+                            $scope.list = parseRightsUser(res.data.list);
+                            $scope.successmessage = "User erstellen hat Funtioniert!";
+                            $scope.successvis = true;
+                        }
+
+                    });
+                }
+                else{
+                    $scope.errormessage = "User erstellen hat nicht Funtioniert!";
+                    $scope.successvis = false;
+                }
+
+            })
+        }
+        else{
+            $scope.errormessage = "User erstellen hat nicht Funtioniert!";
+            $scope.successvis = false;
+        }
+
+    };
+    $scope.deleteUser = function(id){
+        userService.deleteUser(id).success(function(res){
+            if(res.type == true){
+                userService.getUser($routeParams.id).success(function(res){
+                    if(res.data.list != null){
+                        $scope.list = parseRightsUser(res.data.list);
+                        $scope.successmessage = "User löschen hat Funtioniert!";
+                        $scope.successvis = true;
+                    }
+                });
+            }else{
+                $scope.errormessage = "User löschen hat nicht Funtioniert!";
+                $scope.successvis = false;
+            }
+        });
+    };
+
+    $scope.createGrp = function(){
+        if($scope.newgrp != null){
+            $scope.newgrp.ersteller = $routeParams.id;
+            userService.newGrp($scope.newgrp).success(function(res){
+                if(res.type == true){
+                    userService.getUser($routeParams.id).success(function(res){
+                        $scope.grpp = res.data.grpp;
+                        $scope.successmessage = "Gruppen erstellen hat Funtioniert!";
+                        $scope.successvis = true;
+                    });
+                }else{
+                    $scope.errormessage = "Gruppen erstellen hat nicht Funtioniert!";
+                    $scope.successvis = false;
+                }
+
+            })
+        }else{
+            $scope.errormessage = "Gruppen erstellen hat nicht Funtioniert!";
+            $scope.successvis = false;
+        }
+
+    };
+    $scope.deleteGrp = function(id){
+        userService.deleteGrp(id).success(function(res){
+            if(res.type == true){
+                userService.getUser($routeParams.id).success(function(res){
+                    $scope.grpp = res.data.grpp;
+                    $scope.successmessage = "Gruppen löschen hat Funtioniert!";
+                    $scope.successvis = true;
+                });
+            }else{
+                $scope.errormessage = "Gruppen löschen hat nicht Funtioniert!";
+                $scope.successvis = false;
+            }
+        });
+    };
+
+                    
+});
+
+
+terminKalender.controller('groupCtrl',function($scope,$rootScope,$location,$routeParams,$sessionStorage,gruppenService){
+    $scope.userLogged = $rootScope.userLogged;
+    gruppenService.getGruppe($routeParams.id).success(function(res){
+
+        $scope.pers = res.pers || null;
+        $scope.memb = parseRightsGrp(res.memb)|| null;
+        $scope.term = res.term|| null;
+        $scope.rech = res.rech || null;
+
+        $scope.successmessage = ''+res.pers[0].Gruppen_Name;
+        $scope.successvis = true;
+        
+        $rootScope.$broadcast('isLogged',null);
+    });
+
+    $scope.updateGroupRights = function(data){
+        gruppenService.updateGroupRights(data).success(function(res){
+            if(res.type == true){
+                gruppenService.getGruppe($routeParams.id).success(function(res){
+                    $scope.memb = parseRightsGrp(res.memb);
+                    $scope.successmessage = "Updaten der Gruppenrechte hat Funtioniert!";
+                    $scope.successvis = true;
+                })
+            }
+            else{
+                $scope.errormessage = "Updaten der Gruppenrechte hat nicht Funtioniert!";
+                $scope.successvis = false;
+            }
+        })
+    };
+
+
+    $scope.switchGruppenTermine = function(){
+        if($scope.gruppenTermine){
+            $scope.gruppenTermine = false;
+        }
+        else{
+            $scope.gruppenTermine = true;
+        }
+    };
+
+    $scope.createGruppenTermin = function(){
+        var truedate = true;
+        var arrstart = [],arrende = [];
+        var strstart,strende;
+
+        if($scope.newterm.start != null && $scope.newterm.ende != null){
+            arrstart = $scope.newterm.start.split(" ");
+            arrende = $scope.newterm.ende.split(" ");
+            strstart = arrstart[0]+"T"+arrstart[1];
+            strende = arrende[0]+"T"+arrende[1];
+
+            if(strstart.match("/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/") == false ||
+                strende.match("/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/") == false){
+                $scope.errormessage = "Termin falsches Format!";
+                $scope.successvis = false;
+                truedate = false;
+            }
+            if(new Date() > new Date(strstart) || new Date() > new Date(strende)){
+                $scope.errormessage = "Termin liegt in der Vergangenheit!";
+                $scope.successvis = false;
+                truedate = false;
+            }
+            else if(new Date(strstart) > new Date(strende)){
+                $scope.errormessage = "Termin Ende ist aelter als der Start!";
+                $scope.successvis = false;
+                truedate = false
+            }
+        }
+        else{
+            $scope.errormessage = "Termin erstellen hat nicht Funtioniert!";
+            $scope.successvis = false;
+            truedate = false;
+        }
+
+        if(truedate){
+            $scope.newterm.grpid = $routeParams.id;
+            gruppenService.newGrpTermin($scope.newterm).success(function(res){
+                if(res.type == true){
+                    gruppenService.getGruppe($routeParams.id).success(function(res){
+                        $scope.term = res.term;
+                        $scope.gruppenTermine = false;
+                        $scope.successmessage = "Termin entfernen erstellen hat Funtioniert!;";
+                        $scope.successvis = true;
+                    });
+                }else{
+                    $scope.errormessage = "Termin erstellen hat nicht Funtioniert!";
+                    $scope.successvis = false;
+                }
+
+            })
+        }else{
+            $scope.errormessage = "Termin erstellen hat nicht Funtioniert!";
+            $scope.successvis = false;
+        }
+
+    };
+    $scope.deleteGrpTermin = function(id){
+        gruppenService.delGrpTermin(id).success(function(res){
+            if(res.type == true){
+                gruppenService.getGruppe($routeParams.id).success(function(res){
+                    $scope.term = res.term;
+                    $scope.successmessage = "Termin entfernen erstellen hat Funtioniert!";
+                    $scope.successvis = true;
+                });
+            }else{
+                $scope.errormessage = "Termin entfernen hat nicht Funtioniert!";
+                $scope.successvis = false;
+            }
+        });
+    };
+    $scope.inviteUser  =  function() {
+        if($scope.invuser != null){
+            var newgrpuser = {
+                grpid : $routeParams.id,
+                name : $scope.invuser.name.toLowerCase()
+            };
+            gruppenService.inviteUser(newgrpuser).success(function (res) {
+                if (res.type == true) {
+                    gruppenService.getGruppe($routeParams.id).success(function (res) {
+                        $scope.memb = parseRightsGrp(res.memb);
+                        $scope.successmessage = "User in die Gruppe einladen hat Funtioniert!";
+                        $scope.successvis = true;
+                    });
+                }
+                else{
+                    $scope.errormessage = "User in die Gruppe einladen hat nicht Funtioniert!";
+                    $scope.successvis = false;
+                }
+            });
+        }
+        else{
+            $scope.errormessage = "User in die Gruppe einladen hat nicht Funtioniert!";
+            $scope.successvis = false;
+        }
+
+    };
+    $scope.removeUser = function(id) {
+        var deletegrp = {
+            grpid : $routeParams.id,
+            userid : id
+        };
+        gruppenService.removeUser(deletegrp).success(function (res) {
+            if (res.type == true) {
+                gruppenService.getGruppe($routeParams.id).success(function (res) {
+                    $scope.memb = parseRightsGrp(res.memb);
+                    $scope.successmessage = "User von der Gruppen entfernen hat Funtioniert!";
+                    $scope.successvis = true;
+                });
+            }else{
+                $scope.errormessage = "User von der Gruppen entfernen hat nicht Funtioniert!";
+                $scope.successvis = false;
+            }
+        });
+    }
+
+    $scope.switchUserCreate = function(){
+        if($scope.switchUser){
+            $scope.switchUser = false;
+        }
+        else{
+            $scope.switchUser = true;
+        }
+    };
+
+});
+
+terminKalender.controller('loginCtrl',function($scope,$rootScope,$location,$sessionStorage,loginService){
+
+    $scope.tkLogin = function(){
+        if($scope.login.name !== null && $scope.login.passw){
+            loginService.postLogin($scope.login)
+                .success(
+                function(res){
+                    
+                    if(res.type == true){
+                        $sessionStorage.token = res.token;
+                        $location.path('/user/'+res.data.id);
+                        $rootScope.userLogged = true;
+                        $rootScope.$broadcast('isLogged',null);
+                    }
+                    else{
+                        $scope.errmessage = res.error;
+                        $scope.errorvis = true;
+                        $location.path('/login');
+                        $rootScope.userLogged = false;
+                        $rootScope.$broadcast('isntLogged',null);
+
+                    }
+
+                })
+        }else{
+            $scope.errmessage = "Daten Unvollstaendig!";
+        }
+
+    };
+
+});
+
+/**
+ * Created by dev-kevinvanrijmenant on 8/26/15.
+ */
+terminKalender.directive('kalender',function(){
+    return{
+        restrict : 'E',
+        templateUrl : './parts/kalender.html',
+        scope:{
+            termine : "="
+        },
+        link:function(scope,elem,attr) {
+            scope.$watch('termine', function (newVal, oldVal) {
+
+
+                var d = new Date();
+                var month_name = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                var month = d.getMonth();
+                var year = d.getFullYear();
+                var first_date = month_name[month+1] + " " + 1 + " " + year;
+
+                var tmp = new Date(first_date).toDateString();
+
+                var first_day = tmp.substring(0, 3);
+                var day_name = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                var day_no = day_name.indexOf(first_day);
+                scope.firstDay = new Date(year,month,1).getDay();
+                scope.days = new Date(year, month +1, 0).getDate();
+                scope.date = new Date(year, month, 1);
+
+                scope.calendar_month_year = month_name[month] + " " + year;
+                scope.header = generateHeader();
+                scope.matchdays = match(scope.days, newVal);
+
+                function match(days, newVal) {
+                    var rows = generateRows(days);
+                    var rowsterm = getTerms(days, newVal);
+
+                    var days = [];
+                    if (typeof rowsterm != "undefined") {
+                        if (rows.length === rowsterm.length) {
+                            for (var i = 0; i < rows.length; i++) {
+                                var days2 = [];
+                                for (var j = 0; j < rows[i].length; j++) {
+                                    var test = {
+                                        day: rows[i][j],
+                                        term: rowsterm[i][j] || false
+                                    };
+                                    days2.push(test);
+                                }
+                                days.push(days2);
+                            }
+                            
+                            return days;
+                        }
+                    }
+                }
+                function generateHeader() {
+                    var erg = [];
+                    for (var c = 0; c <= 6; c++) {
+                        erg.push("SMDMDFS"[c]);
+                    }
+                    return erg;
+                }
+
+                function generateRows(days) {
+                    var rows = [];
+                    var count = 1;
+
+                        var row1 = [];
+                        for (var i = 0; i <= 6; i++) {
+                            if(i>=scope.firstDay){
+                                row1.push(count);
+                                count++;
+                            }
+                            else{
+                                row1.push(null);
+                            }
+                        }
+                        rows.push(row1);
+
+
+                    if(scope.days == 31 && scope.firstDay > 4) {
+                        for (var i = 0; i <= 4; i++) {
+                            var row = [];
+                            for (var j = 0; j <= 6; j++) {
+                                if (count >= days) {
+                                    row.push(count);
+                                    break;
+                                }
+                                else {
+                                    row.push(count);
+                                    count++;
+                                }
+
+
+                            }
+                            rows.push(row);
+                        }
+                    }else{
+                            for (var i = 0; i <= 3; i++) {
+                                var row = [];
+                                for (var j = 0;  j <= 6; j++) {
+                                    if (count >= days) {
+                                        row.push(count);
+                                        break;
+                                    }
+                                    else {
+                                        row.push(count);
+                                        count++;
+                                    }
+
+
+                                }
+                                rows.push(row);
+                        }
+
+                    }
+                    return rows;
+                }
+                function getTerms(days, terms) {
+                    var days2 = [];
+                    var count = 1;
+                    var day = false;
+
+                    if (terms != null) {
+
+                        var rowfirst= [];
+
+                        for (var k2 = 0; k2 <= 6; k2++) {
+                                for (var i2 = 0;i2 < terms.length; i2++) {
+
+                                    var termstart = new Date(terms[i2].User_Termine_Start),
+                                        termend = new Date(terms[i2].User_Termine_Ende),
+                                        thisday = new Date(scope.date.getFullYear(), scope.date.getMonth(), count);
+
+
+                                    if (termstart.getFullYear() == scope.date.getFullYear() && termstart.getFullYear() == scope.date.getFullYear() ) {
+
+                                        if (termstart.getMonth() < scope.date.getMonth()
+                                            && termend.getMonth() > scope.date.getMonth()
+                                            && scope.date.getMonth() != termstart.getMonth()
+                                            && scope.date.getMonth() != termend.getMonth()) {
+                                            day = true;
+                                            break;
+                                        }
+                                        else if (termstart.getMonth() == scope.date.getMonth()
+                                            && termstart.getMonth() != termend.getMonth()) {
+                                            if (termstart.getDate() <= thisday.getDate()) {
+                                                day = true;
+                                                break;
+                                            }
+                                            else {
+                                                day = false;
+                                            }
+                                        }
+                                        else if (termend.getMonth() == scope.date.getMonth()
+                                            && termstart.getMonth() != termend.getMonth()) {
+                                            if (termend.getDate() >= thisday.getDate()) {
+                                                day = true;
+                                                break;
+                                            }
+                                            else {
+                                                day = false;
+                                            }
+                                        }
+
+
+                                        else if (termstart.getMonth() == termend.getMonth()
+                                            && termend.getMonth() == scope.date.getMonth() && termstart.getMonth() == scope.date.getMonth()) {
+                                            if (termend.getDate() >= thisday.getDate() && termstart.getDate() <= thisday.getDate()) {
+                                                day = true;
+                                                break;
+
+                                            }
+                                            else {
+                                                day = false;
+                                            }
+                                        }
+                                    }
+                                }
+                            if(k2>=scope.firstDay){
+                                count++;
+                                rowfirst.push(day);
+                            }
+                            else{
+                                rowfirst.push(false);
+
+                                }
+
+                        }
+                        days2.push(rowfirst);
+
+                        if(scope.days == 31 && scope.firstDay > 4){
+                            for (var j = 0; j <= 4; j++) {
+                                var days3 = [];
+                                for (var k = 0; k <= 6; k++) {
+                                    for (var i = 0; i < terms.length; i++) {
+                                        var termstart = new Date(terms[i].User_Termine_Start),
+                                            termend = new Date(terms[i].User_Termine_Ende),
+                                            thisday = new Date(scope.date.getFullYear(), scope.date.getMonth(), count);
+
+
+                                        if (termstart.getFullYear() == scope.date.getFullYear() && termstart.getFullYear() == scope.date.getFullYear() ) {
+
+                                            if (termstart.getMonth() < scope.date.getMonth()
+                                                && termend.getMonth() > scope.date.getMonth()
+                                                && scope.date.getMonth() != termstart.getMonth()
+                                                && scope.date.getMonth() != termend.getMonth()) {
+                                                day = true;
+                                                break;
+                                            }
+                                            else if (termstart.getMonth() == scope.date.getMonth()
+                                                && termstart.getMonth() != termend.getMonth()) {
+                                                if (termstart.getDate() <= thisday.getDate()) {
+                                                    day = true;
+                                                    break;
+                                                }
+                                                else {
+                                                    day = false;
+                                                }
+                                            }
+                                            else if (termend.getMonth() == scope.date.getMonth()
+                                                && termstart.getMonth() != termend.getMonth()) {
+                                                if (termend.getDate() >= thisday.getDate()) {
+                                                    day = true;
+                                                    break;
+                                                }
+                                                else {
+                                                    day = false;
+                                                }
+                                            }
+
+
+                                            else if (termstart.getMonth() == termend.getMonth()
+                                                && termend.getMonth() == scope.date.getMonth() && termstart.getMonth() == scope.date.getMonth()) {
+                                                if (termend.getDate() >= thisday.getDate() && termstart.getDate() <= thisday.getDate()) {
+                                                    day = true;
+                                                    break;
+
+                                                }
+                                                else {
+                                                    day = false;
+                                                }
+                                            }
+                                        }
+                                        /* Todo
+                                         else if(termstart.getFullYear() != scope.date.getFullYear() && termend.getFullYear() != scope.date.getFullYear()
+                                         && termstart.getFullYear() < scope.date.getFullYear()
+                                         && termend.getFullYear() > scope.date.getFullYear(){
+                                         day = true;
+                                         break;
+                                         }
+
+                                         }*/
+                                    }
+                                    if (count >= days) {
+                                        days3.push(day);
+                                        break;
+                                    } else {
+                                        count++;
+                                        days3.push(day);
+                                    }
+                                }
+
+                                days2.push(days3);
+                            }
+                        }else{
+                            for (var j = 0; j <= 3; j++) {
+                                var days3 = [];
+                                for (var k = 0; k <= 6; k++) {
+                                    for (var i = 0; i < terms.length; i++) {
+                                        var termstart = new Date(terms[i].User_Termine_Start),
+                                            termend = new Date(terms[i].User_Termine_Ende),
+                                            thisday = new Date(scope.date.getFullYear(), scope.date.getMonth(), count);
+
+
+                                        if (termstart.getFullYear() == scope.date.getFullYear() && termstart.getFullYear() == scope.date.getFullYear() ) {
+
+                                            if (termstart.getMonth() < scope.date.getMonth()
+                                                && termend.getMonth() > scope.date.getMonth()
+                                                && scope.date.getMonth() != termstart.getMonth()
+                                                && scope.date.getMonth() != termend.getMonth()) {
+                                                day = true;
+                                                break;
+                                            }
+                                            else if (termstart.getMonth() == scope.date.getMonth()
+                                                && termstart.getMonth() != termend.getMonth()) {
+                                                if (termstart.getDate() <= thisday.getDate()) {
+                                                    day = true;
+                                                    break;
+                                                }
+                                                else {
+                                                    day = false;
+                                                }
+                                            }
+                                            else if (termend.getMonth() == scope.date.getMonth()
+                                                && termstart.getMonth() != termend.getMonth()) {
+                                                if (termend.getDate() >= thisday.getDate()) {
+                                                    day = true;
+                                                    break;
+                                                }
+                                                else {
+                                                    day = false;
+                                                }
+                                            }
+
+
+                                            else if (termstart.getMonth() == termend.getMonth()
+                                                && termend.getMonth() == scope.date.getMonth() && termstart.getMonth() == scope.date.getMonth()) {
+                                                if (termend.getDate() >= thisday.getDate() && termstart.getDate() <= thisday.getDate()) {
+                                                    day = true;
+                                                    break;
+
+                                                }
+                                                else {
+                                                    day = false;
+                                                }
+                                            }
+                                        }
+                                        /* Todo
+                                         else if(termstart.getFullYear() != scope.date.getFullYear() && termend.getFullYear() != scope.date.getFullYear()
+                                         && termstart.getFullYear() < scope.date.getFullYear()
+                                         && termend.getFullYear() > scope.date.getFullYear(){
+                                         day = true;
+                                         break;
+                                         }
+
+                                         }*/
+                                    }
+                                    if (count >= days) {
+                                        days3.push(day);
+                                        break;
+                                    } else {
+                                        count++;
+                                        days3.push(day);
+                                    }
+                                }
+
+                                days2.push(days3);
+                            }
+                        }
+                        }
+
+                        return days2;
+
+
+                    }
+
+
+                scope.next = function(){
+                        scope.date = new Date(scope.date.getFullYear(), scope.date.getMonth()+1, 1);
+                        scope.firstDay = scope.date.getDay();
+                        scope.days = new Date(scope.date.getFullYear(),scope.date.getMonth()+1,0).getDate();
+                        scope.calendar_month_year = month_name[scope.date.getMonth()] + " " + scope.date.getFullYear();
+                        scope.matchdays = match(scope.days, newVal);
+
+
+                };
+                scope.prev = function(){
+                        scope.date = new Date(scope.date.getFullYear(), scope.date.getMonth()-1, 1);
+                        scope.firstDay = scope.date.getDay();
+                        scope.days = new Date(scope.date.getFullYear(), scope.date.getMonth(), 0).getDate();
+                        scope.calendar_month_year = month_name[scope.date.getMonth()] + " " + scope.date.getFullYear();
+                        scope.matchdays = match(scope.days, newVal);
+                };
+            });
+        }
+    }
+});
+
+terminKalender.directive('kalendergrp',function(){
+    return{
+        restrict : 'E',
+        templateUrl : './parts/kalender.html',
+        scope:{
+            termine : "="
+        },
+        link:function(scope,elem,attr){
+
+            scope.$watch('termine',function(newVal,oldVal){
+
+
+                var d = new Date();
+                var month_name = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                var month = d.getMonth();
+                var year = d.getFullYear();
+                var first_date = month_name[month+1] + " " + 1 + " " + year;
+
+                var tmp = new Date(first_date).toDateString();
+
+                var first_day = tmp.substring(0, 3);
+                var day_name = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                var day_no = day_name.indexOf(first_day);
+                scope.firstDay = new Date(year,month+1,0).getDay();
+                scope.days = new Date(year, month +1, 0).getDate();
+                scope.date = new Date(year, month +1, 0);
+
+                scope.calendar_month_year = month_name[month] + " " + year;
+                scope.header = generateHeader();
+                scope.matchdays = match(scope.days, newVal);
+
+                function match(days, newVal) {
+                    var rows = generateRows(days);
+                    var rowsterm = getTerms(days, newVal);
+
+                    var days = [];
+                    if (typeof rowsterm != "undefined") {
+                        if (rows.length === rowsterm.length) {
+                            for (var i = 0; i < rows.length; i++) {
+                                var days2 = [];
+                                for (var j = 0; j < rows[i].length; j++) {
+                                    var test = {
+                                        day: rows[i][j],
+                                        term: rowsterm[i][j]
+                                    };
+                                    days2.push(test);
+                                }
+                                days.push(days2);
+                            }
+                            return days;
+                        }
+                    }
+
+
+                }
+                function generateHeader() {
+                    var erg = [];
+                    for (var c = 0; c <= 6; c++) {
+                        erg.push("SMDMDFS"[c]);
+                    }
+                    return erg;
+                }
+                function generateRows(days) {
+                    var rows = [];
+                    var count = 1;
+
+                    var row1 = [];
+                    for (var i = 0; i <= 6; i++) {
+                        if(i>=scope.firstDay){
+                            row1.push(count);
+                            count++;
+                        }
+                        else{
+                            row1.push(null);
+                        }
+                    }
+                    rows.push(row1);
+
+
+                    if(scope.days == 31 && scope.firstDay > 4) {
+                        for (var i = 0; i <= 4; i++) {
+                            var row = [];
+                            for (var j = 0; j <= 6; j++) {
+                                if (count >= days) {
+                                    row.push(count);
+                                    break;
+                                }
+                                else {
+                                    row.push(count);
+                                    count++;
+                                }
+
+
+                            }
+                            rows.push(row);
+                        }
+                    }else{
+                        for (var i = 0; i <= 3; i++) {
+                            var row = [];
+                            for (var j = 0;  j <= 6; j++) {
+                                if (count >= days) {
+                                    row.push(count);
+                                    break;
+                                }
+                                else {
+                                    row.push(count);
+                                    count++;
+                                }
+
+
+                            }
+                            rows.push(row);
+                        }
+
+                    }
+                    return rows;
+                }
+                function getTerms(days, terms) {
+                    var days2 = [];
+                    var count = 1;
+                    var day = false;
+
+                    if (terms != null) {
+
+                        var rowfirst= [];
+
+                        for (var k2 = 0; k2 <= 6; k2++) {
+                            for (var i2 = 0;i2 < terms.length; i2++) {
+
+                                var termstart = new Date(terms[i2].Gruppen_Termine_Start),
+                                    termend = new Date(terms[i2].Gruppen_Termine_Ende),
+                                    thisday = new Date(scope.date.getFullYear(), scope.date.getMonth(), count);
+                                
+                                
+
+                                if (termstart.getFullYear() == scope.date.getFullYear() && termstart.getFullYear() == scope.date.getFullYear() ) {
+
+                                    if (termstart.getMonth() < scope.date.getMonth()
+                                        && termend.getMonth() > scope.date.getMonth()
+                                        && scope.date.getMonth() != termstart.getMonth()
+                                        && scope.date.getMonth() != termend.getMonth()) {
+                                        day = true;
+                                        break;
+                                    }
+                                    else if (termstart.getMonth() == scope.date.getMonth()
+                                        && termstart.getMonth() != termend.getMonth()) {
+                                        if (termstart.getDate() <= thisday.getDate()) {
+                                            day = true;
+                                            break;
+                                        }
+                                        else {
+                                            day = false;
+                                        }
+                                    }
+                                    else if (termend.getMonth() == scope.date.getMonth()
+                                        && termstart.getMonth() != termend.getMonth()) {
+                                        if (termend.getDate() >= thisday.getDate()) {
+                                            day = true;
+                                            break;
+                                        }
+                                        else {
+                                            day = false;
+                                        }
+                                    }
+
+
+                                    else if (termstart.getMonth() == termend.getMonth()
+                                        && termend.getMonth() == scope.date.getMonth() && termstart.getMonth() == scope.date.getMonth()) {
+                                        if (termend.getDate() >= thisday.getDate() && termstart.getDate() <= thisday.getDate()) {
+                                            day = true;
+                                            break;
+
+                                        }
+                                        else {
+                                            day = false;
+                                        }
+                                    }
+                                }
+                            }
+                            if(k2>=scope.firstDay){
+                                count++;
+                                rowfirst.push(day);
+                            }
+                            else{
+                                rowfirst.push(false);
+
+                            }
+
+                        }
+                        days2.push(rowfirst);
+
+                        if(scope.days == 31 && scope.firstDay > 4){
+                            for (var j = 0; j <= 4; j++) {
+                                var days3 = [];
+                                for (var k = 0; k <= 6; k++) {
+                                    for (var i = 0; i < terms.length; i++) {
+                                        var termstart = new Date(terms[i].Gruppen_Termine_Start),
+                                            termend = new Date(terms[i].Gruppen_Termine_Ende),
+                                            thisday = new Date(scope.date.getFullYear(), scope.date.getMonth(), count);
+
+
+                                        if (termstart.getFullYear() == scope.date.getFullYear() && termstart.getFullYear() == scope.date.getFullYear() ) {
+
+                                            if (termstart.getMonth() < scope.date.getMonth()
+                                                && termend.getMonth() > scope.date.getMonth()
+                                                && scope.date.getMonth() != termstart.getMonth()
+                                                && scope.date.getMonth() != termend.getMonth()) {
+                                                day = true;
+                                                break;
+                                            }
+                                            else if (termstart.getMonth() == scope.date.getMonth()
+                                                && termstart.getMonth() != termend.getMonth()) {
+                                                if (termstart.getDate() <= thisday.getDate()) {
+                                                    day = true;
+                                                    break;
+                                                }
+                                                else {
+                                                    day = false;
+                                                }
+                                            }
+                                            else if (termend.getMonth() == scope.date.getMonth()
+                                                && termstart.getMonth() != termend.getMonth()) {
+                                                if (termend.getDate() >= thisday.getDate()) {
+                                                    day = true;
+                                                    break;
+                                                }
+                                                else {
+                                                    day = false;
+                                                }
+                                            }
+
+
+                                            else if (termstart.getMonth() == termend.getMonth()
+                                                && termend.getMonth() == scope.date.getMonth() && termstart.getMonth() == scope.date.getMonth()) {
+                                                if (termend.getDate() >= thisday.getDate() && termstart.getDate() <= thisday.getDate()) {
+                                                    day = true;
+                                                    break;
+
+                                                }
+                                                else {
+                                                    day = false;
+                                                }
+                                            }
+                                        }
+                                        /* Todo
+                                         else if(termstart.getFullYear() != scope.date.getFullYear() && termend.getFullYear() != scope.date.getFullYear()
+                                         && termstart.getFullYear() < scope.date.getFullYear()
+                                         && termend.getFullYear() > scope.date.getFullYear(){
+                                         day = true;
+                                         break;
+                                         }
+
+                                         }*/
+                                    }
+                                    if (count >= days) {
+                                        days3.push(day);
+                                        break;
+                                    } else {
+                                        count++;
+                                        days3.push(day);
+                                    }
+                                }
+
+                                days2.push(days3);
+                            }
+                        }else{
+                            for (var j = 0; j <= 3; j++) {
+                                var days3 = [];
+                                for (var k = 0; k <= 6; k++) {
+                                    for (var i = 0; i < terms.length; i++) {
+                                        var termstart = new Date(terms[i].Gruppen_Termine_Start),
+                                            termend = new Date(terms[i].Gruppen_Termine_Ende),
+                                            thisday = new Date(scope.date.getFullYear(), scope.date.getMonth(), count);
+
+
+                                        if (termstart.getFullYear() == scope.date.getFullYear() && termstart.getFullYear() == scope.date.getFullYear() ) {
+
+                                            if (termstart.getMonth() < scope.date.getMonth()
+                                                && termend.getMonth() > scope.date.getMonth()
+                                                && scope.date.getMonth() != termstart.getMonth()
+                                                && scope.date.getMonth() != termend.getMonth()) {
+                                                day = true;
+                                                break;
+                                            }
+                                            else if (termstart.getMonth() == scope.date.getMonth()
+                                                && termstart.getMonth() != termend.getMonth()) {
+                                                if (termstart.getDate() <= thisday.getDate()) {
+                                                    day = true;
+                                                    break;
+                                                }
+                                                else {
+                                                    day = false;
+                                                }
+                                            }
+                                            else if (termend.getMonth() == scope.date.getMonth()
+                                                && termstart.getMonth() != termend.getMonth()) {
+                                                if (termend.getDate() >= thisday.getDate()) {
+                                                    day = true;
+                                                    break;
+                                                }
+                                                else {
+                                                    day = false;
+                                                }
+                                            }
+
+
+                                            else if (termstart.getMonth() == termend.getMonth()
+                                                && termend.getMonth() == scope.date.getMonth() && termstart.getMonth() == scope.date.getMonth()) {
+                                                if (termend.getDate() >= thisday.getDate() && termstart.getDate() <= thisday.getDate()) {
+                                                    day = true;
+                                                    break;
+
+                                                }
+                                                else {
+                                                    day = false;
+                                                }
+                                            }
+                                        }
+                                        /* Todo
+                                         else if(termstart.getFullYear() != scope.date.getFullYear() && termend.getFullYear() != scope.date.getFullYear()
+                                         && termstart.getFullYear() < scope.date.getFullYear()
+                                         && termend.getFullYear() > scope.date.getFullYear(){
+                                         day = true;
+                                         break;
+                                         }
+
+                                         }*/
+                                    }
+                                    if (count >= days) {
+                                        days3.push(day);
+                                        break;
+                                    } else {
+                                        count++;
+                                        days3.push(day);
+                                    }
+                                }
+
+                                days2.push(days3);
+                            }
+                        }
+                    }
+
+                    return days2;
+
+
+                }
+                scope.next = function(){
+                    scope.date = new Date(scope.date.getFullYear(), scope.date.getMonth()+1, 1);
+                    scope.firstDay = scope.date.getDay();
+                    scope.days = new Date(scope.date.getFullYear(),scope.date.getMonth()+1,0).getDate();
+                    scope.calendar_month_year = month_name[scope.date.getMonth()] + " " + scope.date.getFullYear();
+                    scope.matchdays = match(scope.days, newVal);
+
+
+                };
+                scope.prev = function(){
+                    scope.date = new Date(scope.date.getFullYear(), scope.date.getMonth()-1, 1);
+                    scope.firstDay = scope.date.getDay();
+                    scope.days = new Date(scope.date.getFullYear(), scope.date.getMonth(), 0).getDate();
+                    scope.calendar_month_year = month_name[scope.date.getMonth()] + " " + scope.date.getFullYear();
+                    scope.matchdays = match(scope.days, newVal);
+                };
+            });
+
+        }
+    }
+});
+/**
+ * Created by root on 8/24/15.
+ */
+terminKalender.config(function($routeProvider){
+    $routeProvider.when('/login',{
+        controller:"loginCtrl",
+        templateUrl:"./parts/tkLogin.html"
+    });
+    $routeProvider.when('/group/:id',{
+        controller:"groupCtrl",
+        templateUrl:"./parts/tkGroup.html"
+    });
+    $routeProvider.when('/user/:id',{
+        controller:"userCtrl",
+        templateUrl:"./parts/tkUser.html"
+    });
+    $routeProvider.otherwise('/login');
+});
+/**
+ * Created by root on 8/24/15.
+ */
+terminKalender.factory('loginService',function($http){
+    return{
+        postLogin : function(data) {
+            return $http.post('/api/login', data);
+        }
+    }
+});
+
+terminKalender.factory('userService',function($http){
+    return{
+        getUser : function(id){
+            return $http.get('/api/spec/getUser/'+id);
+        },
+
+        newUser : function(data){
+            return $http.post('/api/spec/newUser',data);
+        },
+        deleteUser : function(id){
+            return $http.delete('/api/spec/delUser/'+id);
+        },
+
+        newGrp : function(data){
+            return $http.post('/api/spec/newGrp',data);
+        },
+        deleteGrp : function(id){
+            return $http.delete('/api/spec/delGrp/'+id);
+        },
+
+        newTerm : function(data){
+            return $http.post('/api/spec/newTerm',data);
+        },
+        deleteTerm: function(id){
+            return $http.delete('/api/spec/delTerm/'+id);
+        },
+        sendMess : function(data){
+            return $http.post('/api/spec/sendMess',data);
+        },
+        deleteMess: function(id){
+            return $http.delete('/api/spec/delMess/'+id);
+        },
+        updateUserRights: function(data){
+            return $http.post('/api/spec/updateUserRights',data);
+        }
+
+    }
+});
+
+terminKalender.factory('gruppenService',function($http){
+    return{
+        getGruppe : function(id){
+            return $http.get('/api/spec/getGruppe/'+id);
+        },
+        newGrpTermin : function(data){
+            return $http.post('/api/spec/createGrpTermin',data);
+        },
+        delGrpTermin : function(id){
+            return $http.delete('/api/spec/delGrpTerm/'+id);
+        },
+        inviteUser : function (data) {
+            return $http.post('/api/spec/inviteUser',data);
+
+        },
+        removeUser : function(data){
+            return $http.post('/api/spec/removeUser',data);
+        },
+        updateGroupRights  : function(data){
+            return $http.post('/api/spec/updateGroupRights',data);
+        }
+    }
+});
+
+terminKalender.config(function ($httpProvider) {
+    $httpProvider.interceptors.push(['$q', '$location', '$sessionStorage', function($q, $location, $sessionStorage) {
+        return {
+            'request': function (config) {
+                config.headers = config.headers || {};
+                if ($sessionStorage.token) {
+                    config.headers.Authorization = 'Token ' + $sessionStorage.token;
+                }
+                return config;
+            },
+            'responseError': function(response) {
+                if(response.status === 401 || response.status === 403) {
+                    $sessionStorage.$reset();
+                    $location.path('/login');
+                }
+                return $q.reject(response);
+            }
+        };
+    }]);
+});
+
+///helper
+function parseRightsUser(paramlist){
+
+    if( typeof paramlist != "undefined"){
+
+        for(var i = 0; i< paramlist.length;i++){
+
+            if(Object.getOwnPropertyNames(paramlist[i]).indexOf("read_user") != -1){
+                if(paramlist[i].read_user == 0){
+                    paramlist[i].read_user = false;
+                }
+                else{
+                    paramlist[i].read_user = true;
+                }
+            }
+            if(Object.getOwnPropertyNames(paramlist[i]).indexOf("create_user") != -1){
+                if(paramlist[i].create_user == 0){
+                    paramlist[i].create_user = false;
+                }
+                else{
+                    paramlist[i].create_user = true;
+                }
+            }
+            if(Object.getOwnPropertyNames(paramlist[i]).indexOf("delete_user") != -1){
+                if(paramlist[i].delete_user == 0){
+                    paramlist[i].delete_user  = false;
+                }
+                else{
+                    paramlist[i].delete_user  = true;
+                }
+                if(Object.getOwnPropertyNames(paramlist[i]).indexOf("create_grp") != -1){
+                    if(paramlist[i].create_grp == 0){
+                        paramlist[i].create_grp = false;
+                    }
+                    else{
+                        paramlist[i].create_grp = true;
+                    }
+                }
+                if(Object.getOwnPropertyNames(paramlist[i]).indexOf("delete_grp") != -1){
+                    if(paramlist[i].delete_grp == 0){
+                        paramlist[i].delete_grp = false;
+                    }
+                    else{
+                        paramlist[i].delete_grp = true;
+                    }
+                }
+            }
+            if(Object.getOwnPropertyNames(paramlist[i]).indexOf("grant_rights") != -1){
+                if(paramlist[i].grant_rights == 0){
+                    paramlist[i].grant_rights = false;
+                }
+                else{
+                    paramlist[i].grant_rights = true;
+                }
+            }
+        } return paramlist;
+    }else{
+        return null;
+    }
+
+}
+function parseRightsGrp(paramlist){
+    if( typeof paramlist != "undefined"){
+
+        for(var i = 0; i< paramlist.length;i++){
+
+            if(Object.getOwnPropertyNames(paramlist[i]).indexOf("read_grp") != -1){
+                if(paramlist[i].read_grp == 0){
+                    paramlist[i].read_grp = false;
+                }
+                else{
+                    paramlist[i].read_grp = true;
+                }
+            }
+            if(Object.getOwnPropertyNames(paramlist[i]).indexOf("invite_user") != -1){
+                if(paramlist[i].invite_user == 0){
+                    paramlist[i].invite_user = false;
+                }
+                else{
+                    paramlist[i].invite_user = true;
+                }
+            }
+            if(Object.getOwnPropertyNames(paramlist[i]).indexOf("remove_user") != -1){
+                if(paramlist[i].remove_user == 0){
+                    paramlist[i].remove_user = false;
+                }
+                else{
+                    paramlist[i].remove_user = true;
+                }
+            }
+            if(Object.getOwnPropertyNames(paramlist[i]).indexOf("grant_rights") != -1){
+                if(paramlist[i].grant_rights == 0){
+                    paramlist[i].grant_rights = false;
+                }
+                else{
+                    paramlist[i].grant_rights = true;
+                }
+            }
+        }
+        return paramlist;
+    }else{
+        return null;
+    }
+}
+
+/**
+ * Created by dev-kevinvanrijmenant on 8/25/15.
+ * authentifizierung.js im Backend
+ */
+var jwt = require('jsonwebtoken');
+var password = require('./passwords');
+
+module.exports = function Authorized(req, res, next) {
+    var authtoken;
+    var tokenHeader = req.headers["authorization"];
+    if (typeof tokenHeader !== 'undefined') {
+        var tokenpart = tokenHeader.split(" ");
+        authtoken = tokenpart[1];
+        req.token = authtoken;
+        jwt.verify(req.token,password.jwtpw,function(err,decoded){
+           if(err)require('./tokenErrHandler')(err,res);
+            else{
+               next();
+           }
+        });
+    } else {
+        res.sendStatus(403);
+    }
+};
+/**
+ * Created by dev-kevinvanrijmenant on 8/24/15.
+ *  cors.js im Backend
+ */
+module.exports = function(app){
+    app.use(function(req, res, next) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+        res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type, Authorization');
+        next();
+    });
+};
+/**
+ * Created by dev-kevinvanrijmenant on 8/25/15.
+ * initadmin.js im Backend
+ */
+var bcrypt = require('bcrypt');
+var passwords = require('./passwords');
+
+
+module.exports = function(con){
+    var superadimpw = bcrypt.hashSync(passwords.bcryptpw,10);
+    con.query('SELECT * FROM Login WHERE Login_Name = "SUPERADMIN";',function(err,data){
+        if(err){
+            console.log(err);
+        }
+        else if(data.length ==  1){
+            console.log("Superadmin in Login exists");
+        }
+        else{
+            con.query('insert into Login values (1,"SUPERADMIN","'+superadimpw+'");',function(err,data){
+            if(err){
+                console.log(err);
+            }else{
+                console.log("SUPERADMIN in Login created!");
+                con.query('SELECT * FROM User WHERE login_id ='+data.insertId+';',function(err,data){
+                    if(err){
+                        console.log(err);
+                    }
+                    else if(data.length ==  1){
+                        console.log("Superadmin in User exists");
+                    }
+                    else{
+                        con.query('insert into User values (1,"SUPERADMIN","SUPERADMIN",null,1);',function(err,data){
+                            if(err){
+                                console.log(err);
+                            }
+                            else{
+                                console.log("SUPERADMIN in User created!");
+                            }
+                        });
+                        con.query('insert into User_Rechte values (null,1,true,true,true,true,true,true);',function(err,data){
+                            if(err){
+                                console.log(err);
+                            }
+                            else{
+                                console.log("SUPERADMIN in User_Rechte created!");
+                                con.query('SET FOREIGN_KEY_CHECKS=0;',function(err,data){
+                                    if(err){
+                                        console.log(err);
+                                    }
+                                    else{
+                                        console.log("Foreign Keys Disabled")
+                                    }
+                                })
+
+                            }
+                        })
+
+                    }
+                })
+            }
+            });
+
+        }
+    })
+};
+/**
+ * Created by dev-kevinvanrijmenant on 8/25/15.
+ * passwords im Backend
+ */
+var password = {
+    bcryptpw : "servergoesbcrypt",
+    jwtpw : "servergoestoken"
+};
+module.exports = password;
+/**
+ * Created by dev-kevinvanrijmenant on 8/26/15.
+ * tokenErrHandler.js im Backend
+ */
+module.exports = function(err,res){
+    if (err.name.indexOf('TokenExpiredError') != -1 || err.name.indexOf('JsonWebTokenError') != -1){
+        res.sendStatus(403);
+    }
+};
+/**
+ * Created by dev-kevinvanrijmenant on 8/25/15.
+ * gruppen.js im Backend
+ */
+var jwt = require('jsonwebtoken');
+var password = require('./config/passwords');
+var authorized = require('./config/authentifizierung');
+
+module.exports = function(router,con){
+    router.get('/api/spec/getGruppe/:id',authorized,function(req,res) {
+        var grpid = req.params.id;
+        var group = {};
+        var decodetoken = jwt.verify(req.token,password.jwtpw);
+
+        con.query('select * from Gruppen_User_Match WHERE User_id = '+parseInt(decodetoken.id)+';',function(err,data){
+            if(err){
+                console.log(err);
+            }
+            else if(data.length == 0){
+                res.sendStatus(403);
+            }
+            else{
+                con.query('select * from Gruppen Where Gruppen.Gruppen_Id = ' + grpid + ';', function (err, data) {
+                    if (err) {
+                        console.log(err);
+                        res.json({type: false, error: "User not found"})
+                    }
+                    else {
+                        group.pers = data;
+                        con.query('select * from Gruppen_User_Match,User,Gruppen_Rechte WHERE  Gruppen_User_Match.gruppen_id = '+grpid+
+                                                                                        ' AND Gruppen_User_Match.user_id = User.User_Id ' +
+                                                                                        ' AND Gruppen_Rechte.gruppen_id = '+grpid+'' +
+                                                                                        ' AND Gruppen_Rechte.user_id = User.User_Id;',function(err,data){
+                            if (err) {
+                                console.log(err);
+                                res.json(group);
+                            }else{
+                                group.memb = data;
+                                con.query('select * from Gruppen_Termine Where gruppen_id = '+ grpid+';',function(err,data){
+                                    if (err) {
+                                        console.log(err);
+                                    }else{
+                                        group.term = data;
+                                        con.query('select * From Gruppen_Rechte,User WHERE Gruppen_Rechte.user_id = User.User_Id AND Gruppen_Rechte.gruppen_id = '+grpid+' AND Gruppen_Rechte.user_id = '+parseInt(decodetoken.id)+';',function(err,data){
+                                            if (err) {
+                                                console.log(err);
+                                                res.json(group);
+                                            }
+                                            else{
+                                                group.rech = data;
+                                                res.json(group);
+                                            }
+                                        })
+
+                                    }
+                                });
+                            }
+                        })
+
+                    }
+
+                });
+            }
+
+        });
+        });
+
+    router.post('/api/spec/createGrpTermin',authorized,function(req,res){
+        var id = req.body.grpid,
+            start = req.body.start,
+            ende = req.body.ende,
+            titel = req.body.titel,
+            text = req.body.text;
+
+        con.query('insert into Gruppen_Termine values(null,'+id+',"'+start+'","'+ende+'","'+titel+'","'+text+'");',function(err,data){
+            if(err){
+                console.log(err);
+                res.json({type:false});
+            }else{
+                res.send({type:true});
+            }
+        })
+    });
+
+    router.delete('/api/spec/delGrpTerm/:id',authorized,function(req,res){
+        var id = parseInt(req.params.id);
+        con.query('delete from Gruppen_Termine WHERE Gruppen_Termine.Gruppen_Termine_Id = '+id+';',function(err,data){
+            if(err){
+                console.log(err);
+                res.json({type:false});
+            }
+            else{
+                res.send({type:true});
+            }
+        })
+    });
+    router.post('/api/spec/inviteUser',authorized,function(req,res){
+        var name = req.body.name.toLowerCase(),
+            grp = req.body.grpid;
+        con.query('SELECT * FROM User WHERE User_Name = "'+name+'";',function(err,data){
+            if(err){
+                console.log(err);
+                res.json({type:false});
+            }
+            else{
+                if(data.length != 0){
+                    var id = data[0].User_Id;
+                    con.query('INSERT INTO Gruppen_User_Match values (null,'+grp+','+id+');',function(err,data){
+                        if(err){
+                            console.log(err);
+                            res.json({type:false});
+                        }
+                        else{
+                            con.query('INSERT INTO Gruppen_Rechte values (null,'+grp+','+id+',false,false,false,false);',function(err,data){
+                                if(err){
+                                    console.log(err);
+                                    res.json({type:false});
+                                }
+                                else{
+                                    res.send({type:true});
+                                }
+                            })
+                        }
+                    })
+                }
+                else{
+                    res.json({type:false});
+                }
+            }
+        })
+
+    });
+
+
+    router.post('/api/spec/removeUser',authorized,function(req,res){
+        var grpid = req.body.grpid,
+            userid = req.body.userid;
+        con.query('delete from Gruppen_User_Match,Gruppen_Rechte USING Gruppen_User_Match,Gruppen_Rechte WHERE Gruppen_User_Match.gruppen_id = ' +grpid+' ' +
+                                                                                                            'AND Gruppen_User_Match.user_id = '+userid+' ' +
+                                                                                                            'AND Gruppen_Rechte.gruppen_id = '+grpid+' ' +
+                                                                                                            'AND Gruppen_Rechte.user_id = '+userid+';'
+            ,function(err,data){
+                if(err){
+                    console.log(err);
+                    res.json({type:false});
+                }
+                else{
+                    console.log(data);
+                    res.send({type:true});
+                }
+        });
+    });
+
+    router.post('/api/spec/updateGroupRights',authorized,function(req,res){
+        var read = req.body.read_grp,
+            invite = req.body.invite_user,
+            remove = req.body.remove_user,
+            giveR = req.body.grant_rights,
+            uid = req.body.User_Id,
+            gid  =req.body.gruppen_id;
+
+        con.query('UPDATE Gruppen_Rechte SET read_grp = '+read+', invite_user = '+invite+',' +
+            ' remove_user = '+remove+', grant_rights = '+giveR+' WHERE user_id = '+uid+' AND gruppen_id = '+gid+';',function(err,data){
+            if(err){
+                console.log(err);
+                res.json({type:false});
+            }
+            else{
+                res.send({type:true});
+            }
+        })
+    })
+
+
+};
+/**
+ * Created by dev-kevinvanrijmenant on 8/25/15.
+ * index.js im Backend
+ */
+var express = require('express');
+var router = express.Router();
+var mysql = require('mysql');
+var password = require('./config/passwords');
+
+var con = mysql.createConnection({
+  host : 'localhost',
+  user : 'root',
+  password: 'toor',
+  database : 'teamKalender'
+});con.connect();
+
+require('./config/initAdmin')(con);
+require('./login')(router,con);
+require('./user')(router,con);
+require('./gruppe')(router,con);
+
+
+router.get('/', function(req, res, next) {
+  res.render('index', { title: 'Termin kalender' });
+});
+
+module.exports = router;
+
+/**
+ * Created by dev-kevinvanrijmenant on 8/25/15.
+ * login.js im Backend
+ */
+var bcrypt = require('bcrypt');
+var jwt = require('jsonwebtoken');
+var password = require('./config/passwords');
+
+module.exports = function(router,con){
+    router.post('/api/login',function(req,res){
+        var name = req.body.name;
+        var passw = req.body.passw;
+
+        con.query('SELECT * FROM Login,User WHERE Login.Login_Id = User.login_id AND Login.Login_Name = "'+name+'";',function(err,data){
+
+            if(err){
+                res.json({type:false,error:"wrong User or Password!"})
+            }
+
+            else if(data.length == 0){
+                res.json({type:false,error:"wrong User or Password!"})
+            }
+            else if(data.length == 1){
+                if(bcrypt.compareSync(passw,data[0].Login_Passw)){
+                    con.query('SELECT * FROM User WHERE login_id = '+data[0].Login_Id+';',function(err,data){
+
+                        if(err){
+                            res.json({type:false,error:"wrong User or Password!"})
+                        }
+                        else{
+
+                            var userData = {
+                                name:data[0].User_Name,
+                                id:data[0].User_Id
+                            };
+                            var token = jwt.sign(userData,password.jwtpw,{expiresInMinutes:60});
+                            res.json({type:true,data:userData,token:token});
+                        }
+                    });
+                }else{
+                    res.json({type:false,error:"wrong User or Password!"})
+                }
+            }
+        });
+    });
+};
+
+/**
+ * Created by dev-kevinvanrijmenant on 8/25/15.
+ *
+ */
+var jwt = require('jsonwebtoken');
+var bcrypt = require('bcrypt');
+var password = require('./config/passwords');
+var authorized = require('./config/authentifizierung');
+
+module.exports = function(router,con){
+    router.get('/api/spec/getUser/:id',authorized,function(req,res){
+        var id = parseInt(req.params.id);
+        var decodetoken = jwt.verify(req.token,password.jwtpw);
+        var userdata= {};
+
+        if(decodetoken.id == id){
+            con.query('select * from User Where User.User_Id = '+id+';',function(err,data){
+                if(err){
+                    console.log(err);
+                    res.json({type:false,error:"User not found"})
+                }
+                else{
+                    userdata.pers = data || null;
+                    con.query('select * from User_Termine Where User_Termine.user_id = '+id+';',function(err,data){
+                        if(err){
+                            console.log(err);
+                            res.json({data:userdata,acc:true});
+                        }
+                        else{
+                            userdata.term = data || null;
+                            con.query('select * from Nachrichten Where Nachrichten.Nachrichten_Empfaenger = '+id+';',function(err,data){
+                                if(err){
+                                    console.log(err);
+                                    res.json({data:userdata,acc:true});
+                                }else{
+                                    userdata.mess = data || null;
+                                    con.query('select * from Gruppen_User_Match,Gruppen Where Gruppen_User_Match.user_id = '+id+' AND Gruppen_User_Match.gruppen_id = Gruppen.Gruppen_Id;',function(err,data){
+                                        if(err){
+                                            console.log(err);
+                                            res.json({data:userdata,acc:true});
+                                        }
+                                        else{
+                                                userdata.grpp = data;
+                                                con.query('select * from User_Rechte WHERE user_id = '+id+';', function (err,data) {
+                                                        if(err){
+                                                            console.log(err);
+                                                            res.json({data:userdata,acc:true});
+                                                        }
+                                                        else{
+                                                            userdata.rech = data;
+                                                                con.query('select * from User,User_Rechte WHERE User.User_Id = User_Rechte.user_id AND User.User_Id != ' +id+' ;',function(err,data){
+                                                                    if(err){
+                                                                        console.log(err);
+                                                                        res.json({data:userdata,acc:true});
+                                                                    }
+                                                                    else{
+                                                                        userdata.list = data;
+                                                                        res.json({data:userdata,acc:true});
+                                                                    }
+                                                                })
+
+
+                                                        }
+                                                    })
+                                            }
+
+                                    });
+                                }
+                            })
+                        }
+                    });
+                }
+            });
+        }
+        else if(decodetoken.id != id) {
+            con.query('select * from User Where User.User_Id = ' + id + ';', function (err, data) {
+                if (err) {
+                    console.log(err);
+                    res.json({type: false, error: "User not found"})
+                }
+                else {
+                    userdata.pers = data || null;
+                    con.query('select * from User_Termine Where User_Termine.user_id = ' + id + ';', function (err, data) {
+                        if (err) {
+                            console.log(err);
+                            res.json({data:userdata,acc:false});
+                        } else {
+                            userdata.term = data || null;
+                            res.json({data:userdata,acc:false});
+                        }
+                    });
+                }
+            });
+        }
+        else{
+            res.sendStatus(403);
+        }
+
+    });
+    router.post('/api/spec/newUser',authorized,function(req,res){
+        var name = req.body.name.toLowerCase(),
+            passw = bcrypt.hashSync(req.body.passw,10),
+            job = req.body.job;
+
+
+        con.query('SELECT * FROM Login WHERE Login_Name = "'+name+'";', function (err,data) {
+            if (err) {
+                console.log(err);
+                res.json({type: false});
+            }
+            else if(data.length >= 1){
+                res.json({type: false});
+            }else {
+            con.query('insert into Login values (null,"' + name + '","' + passw + '");', function (err, data) {
+                if (err) {
+                    console.log(err);
+                    res.json({type: false});
+                }
+                else {
+                    con.query('insert into User values (null,"' + name + '","' + job + '",null,' + data.insertId + ');', function (err, data) {
+                        if (err) {
+                            console.log(err);
+                            res.json({type: false});
+                        }
+                        else {
+                            con.query('insert into User_Rechte values (null,' + data.insertId + ',false,false,false,false,false,false);', function (err, data) {
+                                if (err) {
+                                    console.log(err);
+                                    res.json({type: false});
+                                } else {
+                                    res.json({type: true})
+                                }
+                            });
+
+
+                        }
+
+                    });
+
+                }
+            });
+            }
+        });
+    });
+    router.delete('/api/spec/delUser/:id',authorized,function(req,res){
+        var id = parseInt(req.params.id);
+        con.query('delete from User, Login USING User, Login WHERE User.login_id = '+id+';',function(err,data){
+            if(err){
+                console.log(err);
+                res.json({type:false});
+            }
+            else{
+                res.json({type:true});
+            }
+        })
+    });
+
+    router.post('/api/spec/newTerm',authorized,function(req,res){
+        var userid = req.body.userid,
+            titel = req.body.titel,
+            text = req.body.text,
+            start= req.body.start,
+            ende = req.body.ende;
+
+        con.query('insert into User_Termine values (null,'+userid+',"'+start+'","'+ende+'","'+titel+'","'+text+'");',
+            function(err,data){
+            if(err){
+                console.log(err);
+                res.json({type:false});
+            }
+            else {
+                res.json({type:true});
+            }
+
+        })
+    });
+    router.delete('/api/spec/delTerm/:id',authorized,function(req,res){
+        var id = parseInt(req.params.id);
+        con.query('delete from User_Termine WHERE User_Termine.User_Termine_Id = '+id+';',function(err,data){
+            if(err){
+                console.log(err);
+                res.json({type:false});
+            }
+            else{
+                res.json({type:true});
+            }
+        })
+    });
+
+    router.post('/api/spec/sendMess',authorized,function(req,res){
+        var absender = req.body.absenderid;
+        var empf = req.body.empfaengerid,
+            titel = req.body.titel,
+            text = req.body.text;
+
+            con.query('insert into Nachrichten values (null,'+absender+','+empf+',"'+titel+'","'+text+'");',function(err,data){
+                if(err){
+                    console.log(err);
+                    res.json({type:false});
+                }
+                else{
+                    res.json({type:true});
+                }
+            })
+
+
+    });
+    router.delete('/api/spec/delMess/:id',authorized,function(req,res){
+        var id = parseInt(req.params.id);
+        con.query('delete from Nachrichten WHERE Nachrichten.Nachrichten_Id = '+id+';',function(err,data){
+            if(err){
+                console.log(err);
+                res.json({type:false});
+            }
+            else{
+                res.json({type:true});
+            }
+        })
+    });
+
+
+
+    router.post('/api/spec/getTerminList/:id',authorized, function () {
+        var id =  parseInt(req.params.id);
+
+        con.query('select * from User_Termine WHERE user_id = '+id+';',function(err,data){
+            if(err){
+                console.log(err);
+                res.json({type:false});
+            }
+            else{
+                res.json(data);
+            }
+        })
+    });
+
+    router.post('/api/spec/newGrp',authorized,function(req,res){
+        var name = req.body.name.toLowerCase(),
+            ersteller = req.body.ersteller;
+
+
+        con.query('insert into Gruppen values (null,"'+name+'","'+ersteller+'");',function(err,data){
+            if(err){
+                console.log(err);
+                res.json({type:false});
+            }
+            else{
+                var grpid = data.insertId;
+                con.query('insert into Gruppen_User_Match values(null,'+grpid+','+ersteller+');',function(err,data){
+                    if(err){
+                        console.log(err);
+                        res.json({type:false});
+                    }else{
+                        con.query('insert into Gruppen_Rechte values (null,'+grpid+','+ersteller+',true,true,true,true);',function(err,data){
+                            if(err){
+                                console.log(err);
+                            }
+                            else{
+                                if(ersteller != 1){
+                                    con.query('insert into Gruppen_Rechte values (null,'+grpid+',1,true,true,true,true);',function(err,data){
+                                        if(err){
+                                            console.log(err);
+                                        }
+                                        else{
+                                            res.json({type:true});
+                                        }
+                                    })
+                                }else{
+                                    res.json({type:true});
+                                }
+
+                            }
+                        });
+
+                    }
+
+                });
+
+            }
+        })
+    });
+
+    router.delete('/api/spec/delGrp/:id',authorized,function(req,res){
+        var id = parseInt(req.params.id);
+        con.query('delete from Gruppen,Gruppen_User_Match USING Gruppen,Gruppen_User_Match WHERE Gruppen.Gruppen_Id = '+id+' AND Gruppen_User_Match.gruppen_id = '+id+';',function(err,data){
+            if(err){
+                console.log(err);
+                res.json({type:false});
+            }
+            else{
+                res.send({type:true});
+            }
+        })
+    });
+
+
+    //////////////new////////////////7
+    router.post('/api/spec/updateUserRights',authorized,function(req,res){
+        var read = req.body.read_user,
+            create = req.body.create_user,
+            deleteU = req.body.delete_user,
+            giveR = req.body.grant_rights,
+            createg = req.body.create_grp,
+            delg = req.body.delete_grp,
+            uid = req.body.User_Id;
+
+        con.query('UPDATE User_Rechte SET read_user = '+read+', create_user = '+create+',' +
+            ' delete_user = '+deleteU+', grant_rights = '+giveR+', create_grp = '+createg+', delete_grp = '+delg+' WHERE user_id = '+uid+';',function(err,data){
+            if(err){
+                console.log(err);
+                res.json({type:false});
+            }
+            else{
+                res.send({type:true});
+            }
+        })
+    })
+
+
+};
+/**
+ * Created by dev-kevinvanrijmenant on 8/31/15.
+ */
+module.exports = function(grunt){
+    grunt.initConfig({
+        removelogging: {
+            dist:{
+                src:'./public/javascripts/ang/dev/*.js'
+            }
+
+        },
+        clean:{
+          build: {
+              src : ['./public/javascripts/ang/mainCode.js']
+          }
+        },
+        concat:{
+            angular: {
+                files:{
+                    './public/javascripts/ang/mainCode.js':['./public/javascripts/ang/dev/*.js']
+                }
+            },
+            doku : {
+                files : {
+                    './ALLDATA_JS.txt':['./public/javascripts/ang/tkMain.js','./public/javascripts/ang/dev/*.js','./routes/**/*.js','./Gruntfile.js','./cluster.js']
+                }
+            }
+
+        },
+        uglify: {
+            allthatmatters:{
+                options:{
+                    sourceMap:true,
+                    mangle: false
+                },
+                files :{
+                    './public/javascripts/ang/mainCode.min.js':'./public/javascripts/ang/mainCode.js'
+                }
+            }
+        }
+    });
+    grunt.loadNpmTasks('grunt-contrib-uglify');
+    grunt.loadNpmTasks('grunt-contrib-concat');
+    grunt.loadNpmTasks("grunt-remove-logging");
+    grunt.loadNpmTasks("grunt-contrib-clean");
+
+    grunt.registerTask('default',['removelogging','concat','uglify']);
+    grunt.registerTask('cleanup',['clean']);
+
+};
+<!-- kalender.html -->
+<div class="jumbotron jumbostyle custom_header">
+
+    <h3 class="currentdate">
+        <a href="" ng-click="prev()">
+            <span class="glyphicon glyphicon-arrow-left cal_arrow"></span>
+        </a>
+        {{calendar_month_year}}
+        <a href="" ng-click="next()">
+            <span class="glyphicon glyphicon-arrow-right cal_arrow"></span>
+        </a>
+    </h3>
+
+</div>
+        <div>
+            <table class="table tablestyles">
+                <th>
+                    <td class="tableheader" ng-repeat="head in header track by $index">{{head}}</td>
+                </th>
+                <tr ng-repeat="row in matchdays track by $index">
+                    <td></td>
+                    <td class="tablecontent" ng-class="day.term && 'showBlue'|| 'showWhite'" ng-repeat="day in row track by $index">
+                        <a href="" data-toggle="collapse" data-parent="#accordion" data-target="#collapse1"><span class="numberSize">{{day.day}}</span></a>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+<!-- tkLogin.html -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="jumbotron custom_header">
+            <h1 style="text-align: center;">Terminkalender</h1>
+            <img ng-src="./images/myKalender.png" width="100%" height="100%" alt="myKalender Bild">
+        </div>
+    </div>
+</div>
+<div class="row">
+        <div class="col-lg-12">
+            <div class="form-group">
+                <form novalidate ng-submit="tkLogin()">
+                    <input type="text" placeholder="Name" class="form-control" ng-model="login.name">
+                    <input type="password" placeholder="pasword" class="form-control" ng-model="login.passw">
+                    <button type="submit" class="btn btn-primary btn-block">Login</button>
+                </form>
+            </div>
+
+        </div>
+</div>
+<div class="row" ng-init="successvis = false">
+    <div class="col-lg-12" ng-show="errorvis">
+        <a class="btn btn-block btn-danger">{{errmessage}}</a>
+    </div>
+</div>
+
+
+<!-- tkGroup.html -->
+<div class="page-header custom_header">
+    <h1> {{pers[0].Gruppen_Name}}</h1>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+        <div>
+            <kalendergrp termine="term"></kalendergrp>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="panel-group" id="accordion">
+            <div class="panel panel-primary">
+                <div class="panel-heading customPanel" >
+                    <h2 class="panel-title" data-toggle="collapse" data-parent="#accordion" data-target="#collapse1">
+                        Termine <span class="glyphicon glyphicon-arrow-down pull-right"></span>
+                    </h2>
+                </div>
+                <div id="collapse1" class="panel-collapse collapse">
+                    <ul class="list-group">
+                        <li class="list-group-item" ng-repeat="termine in term">
+                            <h4>{{termine.Gruppen_Termine_Titel}}  {{termine.Gruppen_Termine_Start | date : 'dd-MM-yyyy HH:mm'}} bis {{termine.Gruppen_Termine_Ende | date : 'dd-MM-yyyy HH:mm'}}
+                                <a   href="" ng-click="deleteGrpTermin(termine.Gruppen_Termine_Id)"><span class="glyphicon glyphicon-remove pull-right" ></span></a>
+                            </h4>
+                            <p>{{termine.Gruppen_Termine_Text}}</p>
+                        </li>
+                    </ul>
+                    <div>
+                        <button class="btn btn-block btn-default" ng-click="switchGruppenTermine()">
+                            neunen Termin anlegen!
+                        </button>
+                    </div>
+                    <div class="form-group" ng-show="gruppenTermine">
+                        <form novalidate ng-submit="createGruppenTermin()">
+
+
+                            Start:<input required type="text" class="form-control datepicker" placeholder="Start yyyy-mm-dd hh:mm:ss" ng-model="newterm.start">
+                            Ende:<input required type="text" class="form-control datepicker" placeholder="Ende yyyy-mm-dd hh:mm:ss" ng-model="newterm.ende">
+                            Titel:<input required class="form-control" type="text" placeholder="Titel" ng-model="newterm.titel"><br>
+                            Text:<textarea ng-model="newterm.text" class="form-control" rows="5" placeholder="Berschreibung deines Termines" maxlength="40">
+                        </textarea>
+                            <button class="btn btn-block btn-warning" type="submit">Termin erstellen!</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row" ng-show="rech[0].read_grp">
+    <div class="col-lg-12">
+        <div class="panel-group" id="accordion4">
+            <div class="panel panel-primary">
+                <div class="panel-heading customPanel" >
+                    <h2 class="panel-title" data-toggle="collapse" data-parent="#accordion4" data-target="#collapse4">
+                        User Verwaltung <span class="glyphicon glyphicon-arrow-down pull-right"></span>
+                    </h2>
+                </div>
+                <div id="collapse4" class="panel-collapse collapse">
+                    <ul class="list-group" ng-repeat="user in memb">
+                        <li class="list-group-item">
+                            <div>
+                                <h4>{{user.User_Name}}
+                                <span class="pull-right">
+                                    <a  ng-show="rech[0].remove_user" href="" ng-click="removeUser(user.user_id)"><span class="glyphicon glyphicon-remove pull-right" ></span></a></span>
+                                </h4>
+                                <div class="form-inline" ng-show="rech[0].grant_rights">
+                                    <div class="checkbox">
+                                        <label>Read</label>
+                                        <input class="form-control" type="checkbox" ng-true-value="true" ng-false-value="false" ng-model="user.read_grp" ng-change="updateGroupRights(user)">
+
+                                    </div>
+                                    <div class="checkbox checkbmargin">
+                                        <label>Invite</label>
+                                        <input class="form-control"  type="checkbox" ng-true-value="true" ng-false-value="false" ng-model="user.invite_user" ng-change="updateGroupRights(user)">
+
+                                    </div>
+                                    <div class="checkbox checkbmargin">
+                                        <label>Remove</label>
+                                        <input class="form-control"  type="checkbox" ng-true-value="true" ng-false-value="false" ng-model="user.remove_user" ng-change="updateGroupRights(user)">
+
+                                    </div>
+                                    <div class="checkbox checkbmargin">
+                                        <label>GiveRights</label>
+                                        <input class="form-control"  type="checkbox" ng-true-value="true" ng-false-value="false" ng-model="user.grant_rights" ng-change="updateGroupRights(user)">
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                    <div ng-show="rech[0].invite_user">
+                        <div>
+                            <button class="btn btn-block btn-default" ng-click="switchUserCreate()">
+                                User einladen!
+                            </button>
+                        </div>
+                        <div ng-show="switchUser">
+                            <form novalidate ng-submit="inviteUser()" class="form-inline">
+                                Name:<input required type="text" class="form-control" placeholder="name" ng-model="invuser.name">
+                                <button class="btn btn-block btn-warning" type="submit">User aufnehmen!</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row" ng-init="successvis = true">
+    <div class="col-lg-12" ng-hide="successvis">
+        <a class="btn btn-block btn-danger">{{errormessage}}</a>
+    </div>
+    <div class="col-lg-12" ng-show="successvis">
+        <a class="btn btn-block btn-success">{{successmessage}}</a>
+    </div>
+</div>
+
+<!-- tkUser.html -->
+<div class="page-header custom_header">
+    <h1>{{pers[0].User_Name}}<span class="pull-right">{{pers[0].User_Job}}</span></h1>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+        <div>
+            <kalender termine="term"></kalender>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="panel-group" id="accordion">
+            <div class="panel panel-primary">
+                <div class="panel-heading customPanel" >
+                    <h2 class="panel-title" data-toggle="collapse" data-parent="#accordion" data-target="#collapse1">
+                        Termine <span class="glyphicon glyphicon-arrow-down pull-right"></span>
+                    </h2>
+                </div>
+                <div id="collapse1" class="panel-collapse collapse">
+                    <ul class="list-group">
+                        <li class="list-group-item" ng-repeat="termine in term">
+                            <div>
+                                <h4>{{termine.User_Termine_Titel}}  {{termine.User_Termine_Start | date : 'dd-MM-yyyy HH:mm'}} bis {{termine.User_Termine_Ende | date : 'dd-MM-yyyy HH:mm'}}
+                                    <a   href="" ng-click="deleteTermin(termine.User_Termine_Id)"><span class="glyphicon glyphicon-remove pull-right" ></span></a>
+                                </h4>
+                                <p>{{termine.User_Termine_Text}}</p>
+
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div>
+                        <button class="btn btn-block btn-default" ng-click="switchUserTermine()">
+                            neunen Termin!
+                        </button>
+                    </div>
+                    <div class="form-group" ng-show="userTermine">
+                        <form novalidate ng-submit="createTermin()">
+
+                            Start:<input required type="text" class="form-control datepicker" placeholder="Start yyyy-mm-dd hh:mm:ss"  ng-model="newterm.start">
+                            Ende:<input required type="text" class="form-control datepicker" placeholder="Ende yyyy-mm-dd hh:mm:ss" ng-model="newterm.ende">
+                            Titel:<input required class="form-control" type="text" placeholder="Titel" ng-model="newterm.titel"><br>
+                            Text:<textarea ng-model="newterm.text" class="form-control" rows="5" placeholder="Berschreibung deines Termines" maxlength="40">
+                        </textarea>
+                        <button class="btn btn-block btn-warning" type="submit">Termin erstellen!</button>
+                    </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div ng-show="acc">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="panel-group" id="accordio1n">
+                <div class="panel panel-primary ">
+                    <div class="panel-heading customPanel" >
+                        <h2 class="panel-title" data-toggle="collapse" data-parent="#accordion1" data-target="#collapse2">
+                            Nachrichten <span class="glyphicon glyphicon-arrow-down pull-right"></span>
+                        </h2>
+                    </div>
+                    <div id="collapse2" class="panel-collapse collapse">
+                        <ul class="list-group">
+                            <li class="list-group-item" ng-repeat="message in mess">
+                                <h4>{{message.Nachrichten_Titel}}
+                                    <a href="" ng-click="deleteMess(message.Nachrichten_Id)"><span class="glyphicon glyphicon-remove pull-right" ></span></a>
+                                </h4>
+                                <p>{{message.Nachrichten_Text}}</p>
+
+                            </li>
+                        </ul>
+                        <div>
+                            <button class="btn btn-block btn-default" ng-click="switchUserMessages()">
+                                neue Nachricht!
+                            </button>
+                        </div>
+                        <div class="form-group" ng-show="userMessages">
+                            <form novalidate ng-submit="sendMess()">
+                                Empfaenger: <select required class="form-control" type="text" placeholder="Empfänger" ng-model="newmess.empfaengerid">
+                                                <option ng-repeat="user in list">{{user.User_Name}}</option>
+                                            </select>
+                                Abesender:<input required class="form-control" type="text" ng-model="pers[0].User_Name" disabled><br>
+                                Titel:<input required class="form-control" type="text" placeholder="titel" ng-model="newmess.titel"><br>
+                            Text:<textarea ng-model="newmess.text" class="form-control" rows="5" placeholder="Berschreibung deines Termines" maxlength="40">
+                        </textarea>
+                                <button class="btn btn-block btn-warning" type="submit">Nachricht senden!</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div ng-show="acc">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="panel-group" id="accordion3">
+                <div class="panel panel-primary">
+                    <div class="panel-heading customPanel" >
+                        <h2 class="panel-title" data-toggle="collapse" data-parent="#accordion3" data-target="#collapse3">
+                            Gruppen <span class="glyphicon glyphicon-arrow-down pull-right"></span>
+                        </h2>
+                    </div>
+                    <div id="collapse3" class="panel-collapse collapse" >
+                        <ul class="list-group" >
+                            <li class="list-group-item" ng-repeat="gruppe in grpp">
+                                <div>
+                                    <h4><a href="#/group/{{gruppe.Gruppen_Id}}">{{gruppe.Gruppen_Name}}</a>
+                                    <span class="pull-right">
+                                        <a href="" ng-click="deleteGrp(gruppe.Gruppen_Id)"><span ng-show="rech[0].delete_grp" class="glyphicon glyphicon-remove" ></span></a>
+                                    </span>
+                                    </h4>
+                                </div>
+                            </li>
+                            <div>
+                                <div ng-show="rech[0].create_grp">
+                                    <button class="btn btn-block btn-default" ng-click="switchGrpCreate()">
+                                    neue Gruppe!
+                                    </button>
+                                <div class="form-group" ng-show="switchGrp">
+                                    <form  novalidate ng-submit="createGrp()">
+                                        <div class="form-group">
+                                            Gruppen Name:<input required class="form-control" type="text" placeholder="name" ng-model="newgrp.name">
+                                        </div>
+
+                                        <button class="btn btn-block btn-warning" type="submit">Gruppe erstellen!</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+
+<div ng-show="acc">
+    <div class="row" ng-show="rech[0].read_user">
+        <div class="col-lg-12">
+            <div class="panel-group" id="accordion4">
+                <div class="panel panel-primary">
+                    <div class="panel-heading customPanel" >
+                        <h2 class="panel-title" data-toggle="collapse" data-parent="#accordion4" data-target="#collapse4">
+                            User Verwaltung <span class="glyphicon glyphicon-arrow-down pull-right"></span>
+                        </h2>
+                    </div>
+                    <div id="collapse4" class="panel-collapse collapse">
+                        <ul class="list-group" ng-repeat="user in list">
+                            <li class="list-group-item">
+                                <div>
+                                    <h4><a href="#/user/{{user.User_Id}}">{{user.User_Name}}</a>
+                                        <span class="pull-right">
+                                            <a ng-show="rech[0].delete_user" href="" ng-click="deleteUser(user.User_Id)">
+                                                <span class="glyphicon glyphicon-remove" ></span>
+                                            </a>
+                                        </span>
+                                    </h4>
+                                    <div class="form-inline" ng-show="rech[0].grant_rights">
+                                        <div class="checkbox">
+                                            <label>Read</label>
+                                            <input class="form-control" ng-true-value="true" ng-false-value="false" type="checkbox" ng-model="user.read_user" ng-change="updateUserRights(user)">
+
+                                        </div>
+                                        <div class="checkbox checkbmargin">
+                                            <label>Delete </label>
+                                            <input class="form-control" ng-true-value="true" ng-false-value="false"  type="checkbox" ng-model="user.delete_user" ng-change="updateUserRights(user)">
+
+                                        </div>
+                                        <div class="checkbox checkbmargin">
+                                            <label>Create</label>
+                                            <input class="form-control" ng-true-value="true" ng-false-value="false"  type="checkbox" ng-model="user.create_user" ng-change="updateUserRights(user)">
+
+                                        </div>
+                                        <div class="checkbox checkbmargin">
+                                            <label>Create_Grp</label>
+                                            <input class="form-control" ng-true-value="true" ng-false-value="false"  type="checkbox" ng-model="user.create_grp" ng-change="updateUserRights(user)">
+
+                                        </div>
+                                        <div class="checkbox checkbmargin">
+                                            <label>Delete_Grp</label>
+                                            <input class="form-control" ng-true-value="true" ng-false-value="false"  type="checkbox" ng-model="user.delete_grp" ng-change="updateUserRights(user)">
+                                        </div>
+                                        <div class="checkbox checkbmargin">
+                                            <label>GiveRights</label>
+                                            <input class="form-control"  ng-true-value="true" ng-false-value="false" type="checkbox" ng-model="user.grant_rights" ng-change="updateUserRights(user)">
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                        <div ng-show="rech[0].create_user">
+                            <div>
+                                <button class="btn btn-block btn-default" ng-click="switchUserCreate()">
+                                    neuer User!
+                                </button>
+                            </div>
+                            <div class="form-group" ng-show="switchUser">
+                                <form novalidate ng-submit="createUser()">
+                                    Name:<input required type="text" class="form-control" placeholder="name" ng-model="newuser.name">
+                                    Job:<input required type="text" class="form-control" placeholder="Job" ng-model="newuser.job">
+                                    Passwort:<input required type="password" class="form-control" placeholder="password" ng-model="newuser.passw">
+                                    <button class="btn btn-block btn-warning" type="submit">User erstellen!</button>
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row" ng-init="successvis = true">
+    <div class="col-lg-12" ng-hide="successvis">
+        <a class="btn btn-block btn-danger">{{errormessage}}</a>
+    </div>
+    <div class="col-lg-12" ng-show="successvis">
+        <a class="btn btn-block btn-success">{{successmessage}}</a>
+    </div>
+</div>
+
+//index.jade
+doctype html
+html(ng-app='terminKalender')
+  head
+    meta(name="viewport", content="width=device-width, initial-scale=1")
+    title=title
+
+    link(href="/lib/bootstrap/dist/css/bootstrap.min.css",rel="stylesheet", type="text/css")
+    link(href="./stylesheets/style.css",rel="stylesheet")
+
+  body
+    div
+      nav.navbar.navbar-inverse
+        div.container-fluid
+          div.navbar-header
+            a.navbar-brand(href="") TerminKalender
+              span
+                img(alt="Brand" src="./images/kalender.png")
+              ul.nav.navbar-nav.navbar-right(ng-controller='logout')
+                li
+                  a(ng-show="userLogged",href="", ng-click='logout()') Logout
+
+
+    div.container
+      div(ng-view)
+
+
+    script(src="/lib/jquery/dist/jquery.min.js", type="text/javascript")
+    script(src="/lib/bootstrap/dist/js/bootstrap.min.js",type="text/javascript")
+
+
+    script(src="/lib/angular/angular.min.js", type="text/javascript")
+    script(src="/lib/angular-route/angular-route.min.js", type="text/javascript")
+    script(src="/lib/ngstorage/ngStorage.min.js", type="text/javascript")
+
+    script(src="/javascripts/ang/tkMain.js",type="text/javascript")
+    script(src="/javascripts/ang/mainCode.min.js",type="text/javascript")
+    //Dev Deps
+    //script(src="/javascripts/ang/dev/tkRoutes.js",type="text/javascript")
+    //script(src="/javascripts/ang/dev/tkCtrl.js",type="text/javascript")
+    //script(src="/javascripts/ang/dev/tkService.js",type="text/javascript")
+    //script(src="/javascripts/ang/dev/tkDirective.js", type='text/javascript')*/
+
+
+/* create\ table.sql */
+
+DROP TABLE IF EXISTS Login;
+create Table Login (Login_Id integer(10) primary key auto_increment,Login_Name Varchar (40), Login_Passw varchar(200));
+DROP TABLE IF EXISTS User;
+create Table User (User_Id integer(10) primary key auto_increment,User_Name Varchar (40), User_Job varchar(40), User_Gruppe Integer, login_id integer(10));
+DROP TABLE IF EXISTS Nachrichten;
+create Table Nachrichten (Nachrichten_Id integer(10) primary key auto_increment,Nachrichten_Absender integer(10), Nachrichten_Empfaenger integer(10),Nachrichten_Titel Varchar(80),Nachrichten_Text Varchar (400));
+DROP TABLE IF EXISTS User_Rechte;
+create Table User_Rechte (User_Rechte_Id Integer(10) auto_increment primary key, user_id Integer(10),grant_rights boolean, read_user boolean,create_user boolean,delete_user boolean,create_grp boolean,delete_grp boolean);
+DROP TABLE IF EXISTS User_termine;
+create table User_Termine (User_Termine_Id Integer(10) auto_increment primary key, user_id Integer(10),User_Termine_Start timestamp, User_Termine_Ende timestamp,User_Termine_Titel varchar(100), User_Termine_Text varchar(1000));
+DROP TABLE IF EXISTS Gruppen;
+create Table Gruppen (Gruppen_Id integer(10) primary key auto_increment, Gruppen_Name Varchar (40),Gruppen_Ersteller Integer(10));
+DROP TABLE IF EXISTS Gruppen_Rechte;
+create Table Gruppen_Rechte (Gruppen_Rechte_Id Integer(10) auto_increment primary key,gruppen_id Integer(10),user_id Integer(10),grant_rights boolean, read_grp boolean,invite_user boolean,remove_user boolean);
+DROP TABLE IF EXISTS Gruppen_Termine;
+create Table Gruppen_Termine (Gruppen_Termine_Id Integer(10) auto_increment primary key,gruppen_id Integer(10), Gruppen_Termine_Start timestamp,Gruppen_Termine_Ende timestamp,Gruppen_Termine_Titel varchar(100), Gruppen_Termine_Text Varchar(1000));
+DROP TABLE IF EXISTS Gruppen_User_Match;
+create table Gruppen_User_Match (Gruppen_User_Match_Id Integer(10) auto_increment primary key, gruppen_id Integer(10),user_id Integer(10));
+
+
+

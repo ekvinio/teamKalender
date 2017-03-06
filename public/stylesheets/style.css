@@ -1,0 +1,98 @@
+.showred:link{
+  color: red !important;
+  font-size: 22px;
+}
+.currentdate{
+  text-align: center;
+  font-weight: bold;
+}
+
+.jumbostyle{
+  background-color: #269abc !important;
+}
+.jumbostyle:hover{
+  background-color: #269eee !important;
+}
+.customPanel{
+  background-color: #269abc !important;
+}
+.customPanel:hover{
+   background-color: #269eee !important;
+ }
+.numberSize:hover{
+  color: #269abc;
+}
+
+.showWhite{
+  color: whitesmoke;
+}
+.showWhite:hover{
+  color: whitesmoke;
+  background-color: indianred;
+}
+.showBlue{
+  color: cornflowerblue;
+  background-color: whitesmoke;
+  font-weight: bold;
+}.showBlue:hover{
+   color: cornflowerblue;
+   background-color: indianred;
+   font-weight: bold;
+ }
+.showWhite a{
+  color: whitesmoke;
+}
+.showWhite a:hover{
+  color: whitesmoke;
+  background-color: indianred;
+  font-weight: bold;
+}
+.showBlue a{
+  color: cornflowerblue;
+  background-color: whitesmoke;
+  font-weight: bold;
+}
+.showBlue:hover a{
+  color: whitesmoke;
+  background-color: indianred;
+  font-weight: bold;
+}
+.showBlue a:hover{
+  color: whitesmoke;
+  background-color: indianred;
+  font-weight: bold;
+}
+
+
+body{
+  background-color: whitesmoke;
+}
+.tablestyles{
+  background-color: dimgray;
+  border: 1px solid whitesmoke;
+}
+
+.tableheader{
+  font-size: 18px;
+  color: darkgray;
+  text-align: center;
+}
+.tablecontent{
+  text-align: center;
+  font-size: large;
+}
+.checkbmargin{
+  margin: 5px;
+}
+.res_error{
+  background-color: red;
+}
+.res_success{
+  background-color: green;
+}
+.cal_arrow{
+  color:whitesmoke;
+}
+.custom_header{
+  font-family: 'Georgia', serif !important;
+}

@@ -1,0 +1,237 @@
+<!-- tkUser.html -->
+<div class="page-header custom_header">
+    <h1>{{pers[0].User_Name}}<span class="pull-right">{{pers[0].User_Job}}</span></h1>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+        <div>
+            <kalender termine="term"></kalender>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="panel-group" id="accordion">
+            <div class="panel panel-primary">
+                <div class="panel-heading customPanel" >
+                    <h2 class="panel-title" data-toggle="collapse" data-parent="#accordion" data-target="#collapse1">
+                        Termine <span class="glyphicon glyphicon-arrow-down pull-right"></span>
+                    </h2>
+                </div>
+                <div id="collapse1" class="panel-collapse collapse">
+                    <ul class="list-group">
+                        <li class="list-group-item" ng-repeat="termine in term">
+                            <div>
+                                <h4>{{termine.User_Termine_Titel}}  {{termine.User_Termine_Start | date : 'dd-MM-yyyy HH:mm'}} bis {{termine.User_Termine_Ende | date : 'dd-MM-yyyy HH:mm'}}
+                                    <a   href="" ng-click="deleteTermin(termine.User_Termine_Id)"><span class="glyphicon glyphicon-remove pull-right" ></span></a>
+                                </h4>
+                                <p>{{termine.User_Termine_Text}}</p>
+
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div>
+                        <button class="btn btn-block btn-default" ng-click="switchUserTermine()">
+                            neunen Termin!
+                        </button>
+                    </div>
+                    <div class="form-group" ng-show="userTermine">
+                        <form novalidate ng-submit="createTermin()">
+
+                            Start:<input required type="text" class="form-control datepicker" placeholder="yyyy-mm-dd hh:mm:ss"  ng-model="newterm.start">
+                            Ende:<input required type="text" class="form-control datepicker" placeholder="yyyy-mm-dd hh:mm:ss" ng-model="newterm.ende">
+                            Titel:<input required class="form-control" type="text" placeholder="Titel" ng-model="newterm.titel"><br>
+                            Text:<textarea ng-model="newterm.text" class="form-control" rows="5" placeholder="Berschreibung deines Termines" maxlength="40">
+                        </textarea>
+                        <button class="btn btn-block btn-warning" type="submit">Termin erstellen!</button>
+                    </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div ng-show="acc">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="panel-group" id="accordion">
+                <div class="panel panel-primary ">
+                    <div class="panel-heading customPanel" >
+                        <h2 class="panel-title" data-toggle="collapse" data-parent="#accordion1" data-target="#collapse2">
+                            Nachrichten <span class="glyphicon glyphicon-arrow-down pull-right"></span>
+                        </h2>
+                    </div>
+                    <div id="collapse2" class="panel-collapse collapse">
+                        <ul class="list-group">
+                            <li class="list-group-item" ng-repeat="message in mess">
+                                <h4>{{message.Nachrichten_Titel}} von {{message.Nachrichten_Date | date : 'dd-MM-yyyy HH:mm'}}
+                                    <a href="" ng-click="deleteMess(message.Nachrichten_Id)"><span class="glyphicon glyphicon-remove pull-right" ></span></a>
+                                </h4>
+                                <p>{{message.Nachrichten_Text}}</p>
+
+                            </li>
+                        </ul>
+                        <div>
+                            <button class="btn btn-block btn-default" ng-click="switchUserMessages()">
+                                neue Nachricht!
+                            </button>
+                        </div>
+                        <div class="form-group" ng-show="userMessages">
+                            <form novalidate ng-submit="sendMess()">
+                                Empfaenger: <select required class="form-control" type="text" placeholder="Empfänger" ng-model="newmess.empfaengerid">
+                                                <option ng-repeat="user in list">{{user.User_Name}}</option>
+                                            </select>
+                                Abesender:<input required class="form-control" type="text" ng-model="pers[0].User_Name" disabled><br>
+                                Titel:<input required class="form-control" type="text" placeholder="titel" ng-model="newmess.titel"><br>
+                            Text:<textarea ng-model="newmess.text" class="form-control" rows="5" placeholder="Berschreibung deines Termines" maxlength="40">
+                        </textarea>
+                                <button class="btn btn-block btn-warning" type="submit">Nachricht senden!</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div ng-show="acc">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="panel-group" id="accordion3">
+                <div class="panel panel-primary">
+                    <div class="panel-heading customPanel" >
+                        <h2 class="panel-title" data-toggle="collapse" data-parent="#accordion3" data-target="#collapse3">
+                            Gruppen <span class="glyphicon glyphicon-arrow-down pull-right"></span>
+                        </h2>
+                    </div>
+                    <div id="collapse3" class="panel-collapse collapse" >
+                        <ul class="list-group" >
+                            <li class="list-group-item" ng-repeat="gruppe in grpp">
+                                <div>
+                                    <h4><a href="#/group/{{gruppe.Gruppen_Id}}">{{gruppe.Gruppen_Name}}</a>
+                                    <span class="pull-right">
+                                        <a href="" ng-click="deleteGrp(gruppe.Gruppen_Id)"><span ng-show="rech[0].delete_grp" class="glyphicon glyphicon-remove" ></span></a>
+                                    </span>
+                                    </h4>
+                                </div>
+                            </li>
+                            <div>
+                                <div ng-show="rech[0].create_grp">
+                                    <button class="btn btn-block btn-default" ng-click="switchGrpCreate()">
+                                    neue Gruppe!
+                                    </button>
+                                <div class="form-group" ng-show="switchGrp">
+                                    <form  novalidate ng-submit="createGrp()">
+                                        <div class="form-group">
+                                            Gruppen Name:<input required class="form-control" type="text" placeholder="name" ng-model="newgrp.name">
+                                        </div>
+
+                                        <button class="btn btn-block btn-warning" type="submit">Gruppe erstellen!</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+
+<div ng-show="acc">
+    <div class="row" ng-show="rech[0].read_user">
+        <div class="col-lg-12">
+            <div class="panel-group" id="accordion4">
+                <div class="panel panel-primary">
+                    <div class="panel-heading customPanel" >
+                        <h2 class="panel-title" data-toggle="collapse" data-parent="#accordion4" data-target="#collapse4">
+                            User Verwaltung <span class="glyphicon glyphicon-arrow-down pull-right"></span>
+                        </h2>
+                    </div>
+                    <div id="collapse4" class="panel-collapse collapse">
+                        <ul class="list-group" ng-repeat="user in list">
+                            <li class="list-group-item">
+                                <div>
+                                    <h4><a href="#/user/{{user.User_Id}}">{{user.User_Name}}</a>
+                                        <span class="pull-right">
+                                            <a ng-show="rech[0].delete_user" href="" ng-click="deleteUser(user.User_Id)">
+                                                <span class="glyphicon glyphicon-remove" ></span>
+                                            </a>
+                                        </span>
+                                    </h4>
+                                    <div class="form-inline" ng-show="rech[0].grant_rights">
+                                        <div class="checkbox">
+                                            <label>Read</label>
+                                            <input class="form-control" ng-true-value="true" ng-false-value="false" type="checkbox" ng-model="user.read_user" ng-change="updateUserRights(user)">
+
+                                        </div>
+                                        <div class="checkbox checkbmargin">
+                                            <label>Delete </label>
+                                            <input class="form-control" ng-true-value="true" ng-false-value="false"  type="checkbox" ng-model="user.delete_user" ng-change="updateUserRights(user)">
+
+                                        </div>
+                                        <div class="checkbox checkbmargin">
+                                            <label>Create</label>
+                                            <input class="form-control" ng-true-value="true" ng-false-value="false"  type="checkbox" ng-model="user.create_user" ng-change="updateUserRights(user)">
+
+                                        </div>
+                                        <div class="checkbox checkbmargin">
+                                            <label>Create_Grp</label>
+                                            <input class="form-control" ng-true-value="true" ng-false-value="false"  type="checkbox" ng-model="user.create_grp" ng-change="updateUserRights(user)">
+
+                                        </div>
+                                        <div class="checkbox checkbmargin">
+                                            <label>Delete_Grp</label>
+                                            <input class="form-control" ng-true-value="true" ng-false-value="false"  type="checkbox" ng-model="user.delete_grp" ng-change="updateUserRights(user)">
+                                        </div>
+                                        <div class="checkbox checkbmargin">
+                                            <label>GiveRights</label>
+                                            <input class="form-control"  ng-true-value="true" ng-false-value="false" type="checkbox" ng-model="user.grant_rights" ng-change="updateUserRights(user)">
+                                        </div>
+                                        <div class="checkbox checkbmargin">
+                                            <label>Locked</label>
+                                            <input class="form-control"  ng-true-value="true" ng-false-value="false" type="checkbox" ng-model="user.islocked" ng-change="updateUserRights(user)">
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                        <div ng-show="rech[0].create_user">
+                            <div>
+                                <button class="btn btn-block btn-default" ng-click="switchUserCreate()">
+                                    neuer User!
+                                </button>
+                            </div>
+                            <div class="form-group" ng-show="switchUser">
+                                <form novalidate ng-submit="createUser()">
+                                    Name:<input required type="text" class="form-control" placeholder="name" ng-model="newuser.name">
+                                    Job:<input required type="text" class="form-control" placeholder="Job" ng-model="newuser.job">
+                                    Passwort:<input required type="password" class="form-control" placeholder="password" ng-model="newuser.passw">
+                                    <button class="btn btn-block btn-warning" type="submit">User erstellen!</button>
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row" ng-init="successvis = true">
+    <div class="col-lg-12" ng-hide="successvis">
+        <a class="btn btn-block btn-danger">{{errormessage}}</a>
+    </div>
+    <div class="col-lg-12" ng-show="successvis">
+        <a class="btn btn-block btn-success">{{successmessage}}</a>
+    </div>
+</div>
